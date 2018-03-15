@@ -1,6 +1,7 @@
+from __future__ import print_function
 from um_fileheaders import *
 import numpy as np
-import types
+import types, builtins
 
 class umfile_error(Exception):
     pass
@@ -8,16 +9,20 @@ class umfile_error(Exception):
 class packerr(Exception):
     pass
 
-class UMFile(file):
+class UMFile():
+    # Should this inherit from io.something?
     """ Extended version of file class that uses 8 byte words """
 
     missval_i = -32768
     missval_r = -1073741824
 
-    def __init__(self, *args):
-        file.__init__(self, *args)
-        # Set word length and byte order if the file is opened for reading.
-        if self.mode == 'r' or self.mode == 'r+':
+    def __init__(self, filename, mode=None):
+        if not mode:
+            mode = 'rb'
+        if not "b" in mode:
+            mode += "b"
+        self.fileobj = builtins.open(filename, mode)
+        if "r" in mode:
             self.determine_file_type()
             self.readheader()
             self.readlookup()
@@ -28,29 +33,31 @@ class UMFile(file):
     def close(self):
         # Unless file was opened readonly, need to write the new header
         # information before closing.
-        if not self.mode == 'r':
+        if not self.fileobj.mode == 'r':
             self.writeheader()
             self.writelookup()
-        file.close(self)
+        self.fileobj.close()
         
     def wordseek(self,offset):
-        file.seek(self,offset*self.wordsize)
+        self.fileobj.seek(offset*self.wordsize)
+
     def wordread(self,size):
-        return file.read(self,size*self.wordsize)
+        return self.fileobj.read(size*self.wordsize)
+
     def arraywrite(self,array):
         # Could use tofile here, but no real advantage.
         # Need to check whether the native format is big or little
         # Here assuming little
         if array.dtype.byteorder == self.byteorder:
-            return file.write(self,array.tostring())
+            return self.fileobj.write(array.tostring())
         else:
-            return file.write(self,array.byteswap().tostring())
+            return self.fileobj.write(array.byteswap().tostring())
 
     def determine_file_type(self):
         # Get word length and byte order?
         # Read first 16 bytes and try to interpret in various ways
-        self.seek(0)
-        s = self.read(16)
+        self.fileobj.seek(0)
+        s = self.fileobj.read(16)
         # For a UM fieldsfile, first word should be 20 and second 1, 2, or 4
         # For ancillary file first word -32768
         # Include = in the test to make output easier
@@ -87,7 +94,7 @@ class UMFile(file):
     def readheader(self):
         if not self.fieldsfile:
             return
-        self.seek(0)
+        self.fileobj.seek(0)
         # Fixed length header of length 256
         s = self.wordread(256)
         self.fixhd = np.fromstring(s,self.int).newbyteorder(self.byteorder)
@@ -221,17 +228,17 @@ class UMFile(file):
         self.rlookup = np.reshape( np.fromstring(s, self.float).newbyteorder(self.byteorder), [lookdim2, lookdim1])
 
     def print_fixhead(self):
-        print "FIXED HEADER"
+        print("FIXED HEADER")
         for i in range(256):
             if i % 8 == 0:
-                print "%5d:" % i,
+                print("%5d:" % i,end="")
             if self.fixhd[i] == self.missval_i or self.fixhd[i] == self.missval_r:
                 # -32768 is integer missing value, -1073741824 is an FP NaN
-                print "       _",
+                print("       _",end="")
             else:
-                print "%8d" % self.fixhd[i],
+                print("%8d" % self.fixhd[i],end="")
             if i % 8 == 7:
-                print
+                print()
 
     def getmask(self):
         # Is it already defined
@@ -342,7 +349,7 @@ class UMFile(file):
 
         if raw:
             # Data is just array of bytes
-            self.write(data)
+            self.fileobj.write(data)
             # Header is unchanged
             return
         else:

@@ -12,6 +12,7 @@
 # TODO: Specify ranges for variables.
 # Give a warning if field to be excluded is not found?
 
+from __future__ import print_function
 import numpy as np
 import getopt, sys
 import umfile
@@ -43,12 +44,12 @@ try:
             for v in opt[1].split(","):
                 xlist.append(int(v))
 except getopt.error:
-    print "Usage: um_fields_subset.py -i ifile -o ofile [-p] [-s] [-v var] [-x var]"
-    print "       -p include only prognostic (section 0,33,34) variables"
-    print "       -s means -x and -v specify section rather than variable indices"
-    print "       -v var1,var2,... to INCLUDE only these variables"
-    print "       -x var1,var2,... to EXCLUDE only these variables"
-    print "       Variables specified by STASH index = Section Number * 1000 + item number"
+    print("Usage: um_fields_subset.py -i ifile -o ofile [-p] [-s] [-v var] [-x var]")
+    print("       -p include only prognostic (section 0,33,34) variables")
+    print("       -s means -x and -v specify section rather than variable indices")
+    print("       -v var1,var2,... to INCLUDE only these variables")
+    print("       -x var1,var2,... to EXCLUDE only these variables")
+    print("       Variables specified by STASH index = Section Number * 1000 + item number")
     sys.exit(2)
 
 if vlist and xlist:
@@ -104,7 +105,7 @@ for k in range(f.fixhd[FH_LookupSize2]):
             masksaved = True
         
 if vlist and needmask and not masksaved:
-    print "Adding land sea mask to output fields because of packed data"
+    print("Adding land sea mask to output fields because of packed data")
     vlist.append(30)
 
 # Loop over all the fields, counting the number of prognostic fields
@@ -141,13 +142,13 @@ ntracer /= f.inthead[IC_TracerLevs]
 # Set the header to be just large enough
 g.fixhd[FH_LookupSize2] = kout
 if g.fixhd[FH_NumProgFields] != nprog:
-    print "Resetting no of prognostic fields from %d to %d" % (g.fixhd[FH_NumProgFields], nprog)
+    print("Resetting no of prognostic fields from %d to %d" % (g.fixhd[FH_NumProgFields], nprog))
     g.fixhd[FH_NumProgFields] = nprog
 if g.inthead[IC_TracerVars] != ntracer:
-    print "Resetting no of tracer fields from %d to %d" % (g.inthead[IC_TracerVars], ntracer)
+    print("Resetting no of tracer fields from %d to %d" % (g.inthead[IC_TracerVars], ntracer))
     g.inthead[IC_TracerVars] = ntracer
 if ntracer > 0 and g.inthead[IC_TracerLevs] != g.inthead[IC_PLevels]:
-    print "Resetting no of tracer levels from %d to %d" % ( g.inthead[IC_TracerLevs], g.inthead[IC_PLevels])
+    print("Resetting no of tracer levels from %d to %d" % ( g.inthead[IC_TracerLevs], g.inthead[IC_PLevels]))
     g.inthead[IC_TracerLevs] = g.inthead[IC_PLevels]
 
 g.close()

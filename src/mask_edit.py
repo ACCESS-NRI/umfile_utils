@@ -4,6 +4,7 @@
 # For a global grid need to work around quirks of iris treating 
 # longitude range as -180 to 180
 
+from __future__ import division, print_function
 import iris
 import iris.plot as iplt
 import matplotlib
@@ -72,7 +73,7 @@ def draw_GAcoast(ax,coastcolor='black'):
             n = int(l[5:])
             lon = []
             lat = []
-            for i in xrange(n):
+            for i in range(n):
                 l = f.readline()
                 lon.append(float(l.split()[0]))
                 lat.append(float(l.split()[1]))
@@ -144,8 +145,8 @@ def onclick(event):
     if plt.gcf().canvas.widgetlock.locked():
         return
     if args.verbose:
-        print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-            event.button, event.x, event.y, event.xdata, event.ydata)
+        print('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+            event.button, event.x, event.y, event.xdata, event.ydata))
     global fmask, lon, lat, PM, nlon, nlat, changed
     if cyclic:
         # Underlying plot still starts at -180, so fix the coordinate offset
@@ -184,7 +185,7 @@ if changed:
         fmask = fmask[:,:-1]
 
     # Now save a list of the changed points for CAP
-    print "Number of points changed", np.sum(fmask != origmask)
+    print("Number of points changed", np.sum(fmask != origmask))
 
     # Need to flip the order here to N-S.
     orig = origmask[::-1].ravel()
