@@ -1,7 +1,8 @@
 from __future__ import print_function
 from um_fileheaders import *
 import numpy as np
-import types, builtins
+from six.moves import builtins
+import types
 
 class umfile_error(Exception):
     pass
