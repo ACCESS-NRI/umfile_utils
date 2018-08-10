@@ -304,7 +304,7 @@ class UMFile():
         elif packing[2] == 2:
             # Compressed using mask, nlon, nlat are the values from the land
             # sea mask
-            if self.mask == None:
+            if self.mask is None:
                 self.getmask()
             nrows, npts = self.mask.shape
             tmp =  np.fromstring(s[:nbytes], dtype).newbyteorder(self.byteorder)
@@ -363,7 +363,7 @@ class UMFile():
                 # No packing
                 packdata = data
             elif packing[2] == 2:
-                if self.mask == None:
+                if self.mask is None:
                     self.getmask()
                     # Need to restore the file pointer after the mask read
                     self.wordseek(filepos)
