@@ -38,15 +38,24 @@ for k in range(f.fixhd[FH_LookupSize2]):
         break
     if ilookup[ITEM_CODE] == args.varcode:
         print("Replacing field", k, ilookup[ITEM_CODE])
-        if not (ilookup[LBROW], ilookup[LBNPT]) == arr.shape:
+        # Packing
+        n3 = (ilookup[LBPACK] // 100) % 10
+        # Don't check shape if data is packed to land or ocean points
+        if n3==0 and not (ilookup[LBROW], ilookup[LBNPT]) == arr.shape:
             print("\nError: array shape mismatch")
             print("UM field shape", (ilookup[LBROW], ilookup[LBNPT]))
             print("netcdf field shape", arr.shape)
             sys.exit(1)
         a = f.readfld(k)
-        print("Initial sum", a.sum())
+        if n3 == 0:
+            print("Initial sum", a.sum())
+        else:
+            print("Initial sum", np.ma.masked_array(a,f.mask==0).sum())
         a[:] = arr[:]
-        print("Final sum", a.sum())
+        if n3 == 0:
+            print("Final sum", a.sum())
+        else:
+            print("Final sum", np.ma.masked_array(a,f.mask==0).sum())
         f.writefld(a[:], k)
         replaced = True
 
