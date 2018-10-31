@@ -408,6 +408,7 @@ atm_stashvar[1195] = ["QCL INCR: swrad negative", "", "", "", ""]
 atm_stashvar[1198] = ["LIQ CLOUD VOL INCR: swrad positive", "", "", "", ""]
 atm_stashvar[1199] = ["LIQ CLOUD VOL INCR: swrad negative", "", "", "", ""]
 atm_stashvar[1201] = ["NET DOWN SURFACE SW FLUX: SW TS ONLY", "rss", "W m-2", "surface_net_downward_shortwave_flux", ""]
+atm_stashvar[1202] = ["NET DOWN SURFACE SW FLUX: CORRECTED", "rss", "W m-2", "surface_net_downward_shortwave_flux", "rss_corr"]
 atm_stashvar[1203] = ["NET DN SW RAD FLUX:OPEN SEA:SEA MEAN", "rss_sea", "", "", ""]
 atm_stashvar[1204] = ["NET DOWN SURFACE SW FLUX BELOW 690NM", "", "", "", ""]
 atm_stashvar[1207] = ["INCOMING SW RAD FLUX (TOA): ALL TSS", "rsdt", "W m-2", "toa_incoming_shortwave_flux", ""]
@@ -847,7 +848,7 @@ atm_stashvar[3308] = ["DECOUPLED SC. NOT OVER CU. INDICATOR", "", "", "", ""]
 atm_stashvar[3309] = ["DECOUPLED SC. OVER CU. INDICATOR", "", "", "", ""]
 atm_stashvar[3310] = ["CUMULUS-CAPPED BL INDICATOR", "", "", "", ""]
 atm_stashvar[3313] = ["SOIL MOIS AVAIL FACTOR ON PFTS", "", "", "", ""]
-atm_stashvar[3314] = ["SURFACE NET RADIATION ON TILES", "", "netrad", "", "netrad_tile"]
+atm_stashvar[3314] = ["SURFACE NET RADIATION ON TILES", "netrad_tile", "W m-2", "", ""]
 atm_stashvar[3316] = ["SURFACE TEMP ON TILES              K", "ts", "K", "surface_temperature", "ts_tile"]
 atm_stashvar[3317] = ["SURFACE TILE FRACTIONS", "", "", "", ""]
 atm_stashvar[3318] = ["LEAF AREA INDICES ON PFTS", "", "", "", ""]
@@ -3964,14 +3965,15 @@ atm_stashvar[54139] = ["COARSE MODE (SOLUBLE) NO3 MMR CLIM", "", "", "", ""]
 class StashVar:
     
     def __init__(self, code, model=1):
-        if model == 1:
+        # Allow this to be 0 to support some ancillary files
+        if model in [0, 1]:
             # Should this be trapped so that we can return None?
             try:
                 var = atm_stashvar[code]
             except KeyError:
                 var = ["UNKNOWN VARIABLE","", "", "", ""]
         else:
-            raise "Model type %d not supported at the moment" % model
+            raise Exception("Model type %d not supported at the moment" % model)
         self.long_name = var[0]
         # Should there be a dictionary somewhere so this returns a unique
         # set of names? unique as an optional argument?
