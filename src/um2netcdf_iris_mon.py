@@ -3,13 +3,13 @@ from __future__ import print_function
 import iris, numpy as np, datetime, sys, re
 import stashvar
 from iris.coords import CellMethod
-import cf_units, netcdftime
+import cf_units, cftime
 
 iris.FUTURE.netcdf_no_unlimited = True
 
 def convert_proleptic(time):
     # Convert from hour to days and shift origin from 1970 to 0001
-    t0 = netcdftime.DatetimeProlepticGregorian(1,1,1)
+    t0 = cftime.DatetimeProlepticGregorian(1,1,1)
     # datetime gets handled like proleptic gregorian so simple difference works
     # Need a copy because can't assign to time.points[i]
     tvals = np.array(time.points)
