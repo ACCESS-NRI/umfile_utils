@@ -12,14 +12,25 @@ zero_operator = ScaleFactorOperator(0.0)
 
 ff = mule.DumpFile.from_file(sys.argv[1])
 
-codes = {1207:1202, 3287:3314}
+# codes = {1207:1202, 3287:3314}
+# For Roger's AMIP run new fields are
+newlist = [34102, 34104, 34105, 34106, 34108, 34109, 34110, 34111,
+           34114, 34115, 34116, 34117, 34120, 34121, 34126]
+# and can all be taken from 34072
+codes = {34072: newlist}
 
 newflds = []
 for fld in ff.fields:
-    if fld.lbuser4 in codes:
-        tmp = fld.copy()
-        tmp.lbuser4 = codes[fld.lbuser4]
-        newflds.append(zero_operator(tmp))
+    # lbtim > 10 restricts this to diagnostic variables
+    if fld.lbuser4 in codes and fld.lbtim > 10:
+        if isinstance(codes[fld.lbuser4],list):
+            tmplist = codes[fld.lbuser4]
+        else:
+            tmplist = [codes[fld.lbuser4]]
+        for code in tmplist:
+            tmp = fld.copy()
+            tmp.lbuser4 = code
+            newflds.append(zero_operator(tmp))
 
 # To keep proper ordering of the dump file take all the prognostic
 # fields with lbtim < 10 first
