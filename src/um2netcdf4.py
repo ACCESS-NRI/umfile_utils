@@ -39,79 +39,45 @@
 #TODO possibly append libraries to the end of the path, 
 # rather than requiring the environment to be set
 
-import os, sys, getopt
+from __future__ import print_function
+import os, sys, argparse
 import numpy as np
 import re
 from datetime import datetime
 import traceback
 import stashvar
 
-ifile = None
-ofile = None
-mask = True
 heavyside = None
-nckind = 4
-deflate_level = 1
 
-def usage():
-    print " "
-    print "Usage:"
-    print "   "+os.path.basename(sys.argv[0]) + " -i ifile -o ofile [--nomask] [-k kind] [-d deflate_level]"
-    message = """
-     arguments:  
-       ifile =>> input UM filename 
-       ofile =>> output netCDF filename
-       nomask =>> don't mask the pressure-level variables
-                  with the heavyside function (psag)
-                  [default: masking is done (recommended), 
-                   if psag is in the UM input file.]
-       kind =>> netCDF format (as in nccopy/ncdump),  
-          1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model
-          Default is 4
-       deflate_level =>> Compression level for netCDF4 output, 
-                         from 0 (none) to 9 (max). Default=1
-    """
-    print message
-    return
+parser = argparse.ArgumentParser(description="Convert UM fieldsfile to netCDF.")
+parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
+parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file')
+parser.add_argument('-k', dest='nckind', required=False, type=int,
+                    default=4, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 4', choices=[1,2,3,4])
+parser.add_argument('-d', dest='deflate_level', required=False, type=int,
+                    default=1, help='Compression level for netCDF4 output from 0 (none) to 9 (max). Default 1')
+parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', 
+                    default=False, help='verbose output')
+parser.add_argument('--nomask', dest='nomask', action='store_true', 
+                    default=False, help="Don't apply Heaviside function mask to pressure level fields.\n Default is to apply masking if the Heaviside field is available in the input file.")
 
-# Process the command-line inputs
-try:
-    opts, args = getopt.getopt(sys.argv[1:], 'd:i:o:k:',['nomask'])
-except getopt.GetoptError, err:
-    print str(err) # will print something like "option -a not recognized"
-    usage()
-    sys.exit(2)
+args = parser.parse_args()
 
-for o, a in opts:
-    if o == '-d':
-        deflate_level = int(a)
-    elif o == '-i':
-        ifile = a
-    elif o == '--nomask':
-        mask = False
-    elif o == '-o':
-        ofile = a
-    elif o == '-k':
-        nckind = int(a)
+mask = not args.nomask
 
-if not ifile or not ofile:
-   usage()
-   sys.exit(2)
-
-print "Using python version: "+sys.version.split()[0]
-#get outpath
+print("Using python version: "+sys.version.split()[0])
 
 try:
     import cdms2, cdtime
     from cdms2 import MV
     from netCDF4 import Dataset
 except:
-    print """ERROR: modules not loaded
+    print("""ERROR: modules not loaded
     Please run:
         module use ~access/modules
         module load pythonlib/netCDF4
         module load pythonlib/cdat-lite
-        """
+        """)
     exit()
 
 # Rename dimension to commonly used names
@@ -152,7 +118,7 @@ def write_nc_dimension(dimension,fi,fo):
                 setattr(fo.variables[dimout],dattr,getattr(dobj,dattr))
             fo.variables[dimout][:] = dval
         else:
-            print 'already written ',dimout,'...skipping'
+            print('already written ',dimout,'...skipping')
     except:
         dimout = dimension
         if dimout not in fo.variables.keys():
@@ -167,27 +133,25 @@ def write_nc_dimension(dimension,fi,fo):
     # update dimension mapping
     if dimension in renameDims:
         renameDims[dimension] = dimout
-    print "Wrote dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen)
+    print("Wrote dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen))
 
 
 # Main program begins here. 
 # First, open the input UM file (fieldsfile)  
 
 try:
-    fi = cdms2.open(ifile,'r')
+    fi = cdms2.open(args.ifile,'r')
 except:
-    print "Error opening file", ifile
+    print("Error opening file", args.ifile)
     sys.exit(1)
 
-if os.path.exists(ofile):
-    os.unlink(ofile)
+if os.path.exists(args.ofile):
+    os.unlink(args.ofile)
 
 # Create an output netCDF file
-#fo = Nio.open_file(ofile,'w')
 ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT', 
              3:'NETCDF4', 4:'NETCDF4_CLASSIC'}
-fo=Dataset(ofile,'w',format=ncformats[nckind])
-
+fo=Dataset(args.ofile,'w',format=ncformats[args.nckind])
 
 history = "Converted to netCDF by %s on %s." % (os.getenv('USER'),datetime.now().strftime("%Y-%m-%d"))
 
@@ -213,7 +177,8 @@ dimns.sort()
 # create dimensions
 for dimension in dimns:
     write_nc_dimension(dimension,fi,fo)
-print "Finished writing dimensions..."; sys.stdout.flush()
+print("Finished writing dimensions...")
+sys.stdout.flush()
 
 umvar_atts = ["name","long_name","standard_name","units"]
 hcrit = 0.5               # critical value of Heavyside function for inclusion.
@@ -222,7 +187,7 @@ hcrit = 0.5               # critical value of Heavyside function for inclusion.
 varnames_out={}
 # loop over all variables
 # create variables but dont write data
-print 'creating variables...'
+print('creating variables...')
 for varname in varnames:
     vval = fi.variables[varname]
     vdims = vval.listdimnames()
@@ -248,24 +213,31 @@ for varname in varnames:
         
         # write data
         try:
-            fo.createVariable(vname,vval.dtype.char,tuple(vdims),zlib=True,complevel=deflate_level,fill_value=getattr(vval,'_FillValue'))
+            fo.createVariable(vname, vval.dtype.char, tuple(vdims),
+                              zlib=True, complevel=args.deflate_level,
+                              fill_value=getattr(vval,'_FillValue'))
             #print vname +"\t created... from "+ varname; sys.stdout.flush()
         except:
-            print "Could not write %s!" % vname
+            print("Could not write %s!" % vname)
             vname = vname+'_1'
             try:
-	        fo.createVariable(vname,vval.dtype.char,tuple(vdims),zlib=True,complevel=deflate_level,fill_value=getattr(vval,'_FillValue'))
+	        fo.createVariable(vname, vval.dtype.char, tuple(vdims),
+                                  zlib=True, complevel=args.deflate_level,
+                                  fill_value=getattr(vval,'_FillValue'))
             except Exception,e:
                 vname=varname
-                print e,vval.shape
-                fo.createVariable(vname,vval.dtype.char,tuple(vdims),zlib=True,complevel=deflate_level,fill_value=getattr(vval,'_FillValue'))
-            print "Now written as %15s ..." % vname; sys.stdout.flush()
+                print(e,vval.shape)
+                fo.createVariable(vname, vval.dtype.char, tuple(vdims),
+                                  zlib=True, complevel=args.deflate_level,
+                                  fill_value=getattr(vval,'_FillValue'))
+            print("Now written as %15s ..." % vname)
+            sys.stdout.flush()
         varnames_out[varname]=vname
 
         # variable attributes
         for vattr in vval.listattributes():
             if getattr(vval,vattr) is None:
-                print "Could not write attribute %s for %s." % (vattr,vname)
+                print("Could not write attribute %s for %s." % (vattr,vname))
             else:
                 if vattr!='_FillValue':
                     setattr(fo.variables[vname],vattr,getattr(vval,vattr))
@@ -274,51 +246,51 @@ for varname in varnames:
                 setattr(fo.variables[vname],vattr,getattr(umvar,vattr)) 
 # loop over all variables
 # write data
-print 'writing data'
+print('writing data')
 try:
-    #assume same number of times for all variables
-    #get number of times from first variable used
+    # Assume same number of times for all variables
+    # Get number of times from first variable used
     for varname,vname_out in varnames_out.items():
         vval = fi.variables[varname]
         sp = vval.shape
         #remove singleton dim
         if len(sp) == 4 and sp[1] == 1:
-                vval = vval[:,0,:,:]
-# P LEV/UV GRID with missing values treated as zero;
-# needs to be corrected by Heavyside fn
+            vval = vval[:,0,:,:]
+    # P LEV/UV GRID with missing values treated as zero;
+    # needs to be corrected by Heavyside fn
         stash_section = vval.stash_section[0]
         stash_item = vval.stash_item[0]
         item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
         if (30201 <= item_code <= 30303) and mask and item_code!=30301:
             if type(heavyside)==type(None):
-            # set heavyside variable if doesn't exist
+                # set heavyside variable if doesn't exist
                 try:
                     heavyside = fi.variables['psag']
                     # check variable code as well as the name.
-                    if heavyside.stash_item[0] != 301 or \
-                       heavyside.stash_section[0] != 30:
+                    if (heavyside.stash_item[0] != 301 or
+                        heavyside.stash_section[0] != 30) :
                         raise error, "Heavyside variable code mismatch"
                 except Exception: #heaviside function not available
-                        #use temperature zeros as mask (only works for instantaneous values)
+                    #use temperature zeros as mask (only works for instantaneous values)
                     try:
                         heavyside=fi.variables['temp_1'] #second temp field is on pressure levels
                     except:
-	                heavyside=fi.variables['temp'] #take temp if there is no temp_1
-                    heavyside=np.array(heavyside[:]!=0,dtype=np.float32)
-                    print np.shape(heavyside)
-                #mask variable by heavyside function
+                        heavyside=fi.variables['temp'] #take temp if there is no temp_1
+                heavyside=np.array(heavyside[:]!=0,dtype=np.float32)
+                print(np.shape(heavyside))
+                # Mask variable by heavyside function
                 fVal = vval.getMissing()         	
                 if vval.shape == heavyside.shape:
                     vval = MV.where(np.greater(heavyside,hcrit),vval/heavyside,fVal)
                     vval.fill_value = vval.missing_value = fVal
                 else:
-                    print vname,vval.shape,'!= heavyside',heavyside.shape
-                    print vname+' not masked'
+                    print(vname,vval.shape,'!= heavyside',heavyside.shape)
+                    print(vname+' not masked')
         fo.variables[vname_out][:] = vval[:]
-        print 'written: ',varname, 'to',vname_out
-    print 'finished'
+        print('written: ',varname, 'to',vname_out)
+    print('finished')
 except Exception, e:
-    print 'Error :(' ,e			
+    print('Error :(' ,e)
     traceback.print_exc()
     raise e
 
