@@ -114,8 +114,6 @@ except:
         """
     exit()
 
-#import Nio
-
 # Rename dimension to commonly used names
 renameDims = {'latitude0':'lat','longitude0':'lon','latitude1':'lat_1',\
               'longitude1':'lon_1','longitude2':'lon_2','z4_p_level':'lev','z9_p_level':'lev',\
@@ -256,7 +254,7 @@ for varname in varnames:
             print "Could not write %s!" % vname
             vname = vname+'_1'
             try:
-	            fo.createVariable(vname,vval.dtype.char,tuple(vdims),zlib=True,complevel=deflate_level,fill_value=getattr(vval,'_FillValue'))
+	        fo.createVariable(vname,vval.dtype.char,tuple(vdims),zlib=True,complevel=deflate_level,fill_value=getattr(vval,'_FillValue'))
             except Exception,e:
                 vname=varname
                 print e,vval.shape
@@ -278,50 +276,51 @@ for varname in varnames:
 # write data
 print 'writing data'
 try:
-	#assume same number of times for all variables
-	#get number of times from first variable used
-	for varname,vname_out in varnames_out.items():
-		vval = fi.variables[varname]
-		sp = vval.shape
-		#remove singleton dim
-		if len(sp) == 4 and sp[1] == 1:
-			vval = vval[:,0,:,:]
-        # P LEV/UV GRID with missing values treated as zero;
-        # needs to be corrected by Heavyside fn
-		stash_section = vval.stash_section[0]
-		stash_item = vval.stash_item[0]
-		item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
-		if (30201 <= item_code <= 30303) and mask and item_code!=30301:
-			if type(heavyside)==type(None):
-			# set heavyside variable if doesn't exist
-				try:
-					heavyside = fi.variables['psag']
-					# check variable code as well as the name.
-					if heavyside.stash_item[0] != 301 or \
-								                heavyside.stash_section[0] != 30:
-						raise error, "Heavyside variable code mismatch"
-				except Exception: #heaviside function not available
-					#use temperature zeros as mask (only works for instantaneous values)
-					try: heavyside=fi.variables['temp_1'] #second temp field is on pressure levels
-					except:	heavyside=fi.variables['temp'] #take temp if there is no temp_1
-					heavyside=np.array(heavyside[:]!=0,dtype=np.float32)
-					print np.shape(heavyside)
-			#mask variable by heavyside function
-			fVal = vval.getMissing()         	
-			if vval.shape == heavyside.shape:
-				vval = MV.where(np.greater(heavyside,hcrit),vval/heavyside,fVal)
-				vval.fill_value = vval.missing_value = fVal
-			else:
-				print vname,vval.shape,'!= heavyside',heavyside.shape
-				print vname+' not masked'
-		fo.variables[vname_out][:] = vval[:]
-		print 'written: ',varname, 'to',vname_out
-	print 'finished'
+    #assume same number of times for all variables
+    #get number of times from first variable used
+    for varname,vname_out in varnames_out.items():
+        vval = fi.variables[varname]
+        sp = vval.shape
+        #remove singleton dim
+        if len(sp) == 4 and sp[1] == 1:
+                vval = vval[:,0,:,:]
+# P LEV/UV GRID with missing values treated as zero;
+# needs to be corrected by Heavyside fn
+        stash_section = vval.stash_section[0]
+        stash_item = vval.stash_item[0]
+        item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
+        if (30201 <= item_code <= 30303) and mask and item_code!=30301:
+            if type(heavyside)==type(None):
+            # set heavyside variable if doesn't exist
+                try:
+                    heavyside = fi.variables['psag']
+                    # check variable code as well as the name.
+                    if heavyside.stash_item[0] != 301 or \
+                       heavyside.stash_section[0] != 30:
+                        raise error, "Heavyside variable code mismatch"
+                except Exception: #heaviside function not available
+                        #use temperature zeros as mask (only works for instantaneous values)
+                    try:
+                        heavyside=fi.variables['temp_1'] #second temp field is on pressure levels
+                    except:
+	                heavyside=fi.variables['temp'] #take temp if there is no temp_1
+                    heavyside=np.array(heavyside[:]!=0,dtype=np.float32)
+                    print np.shape(heavyside)
+                #mask variable by heavyside function
+                fVal = vval.getMissing()         	
+                if vval.shape == heavyside.shape:
+                    vval = MV.where(np.greater(heavyside,hcrit),vval/heavyside,fVal)
+                    vval.fill_value = vval.missing_value = fVal
+                else:
+                    print vname,vval.shape,'!= heavyside',heavyside.shape
+                    print vname+' not masked'
+        fo.variables[vname_out][:] = vval[:]
+        print 'written: ',varname, 'to',vname_out
+    print 'finished'
 except Exception, e:
-	print 'Error :(' ,e			
-	traceback.print_exc()
-	raise e
+    print 'Error :(' ,e			
+    traceback.print_exc()
+    raise e
 
 sys.stdout.flush()
 fo.close() 
-#fi.close()
