@@ -216,7 +216,8 @@ for varname in varnames:
             fo.createVariable(vname, vval.dtype.char, tuple(vdims),
                               zlib=True, complevel=args.deflate_level,
                               fill_value=getattr(vval,'_FillValue'))
-            #print vname +"\t created... from "+ varname; sys.stdout.flush()
+            print(vname +"\t created... from "+ varname)
+            sys.stdout.flush()
         except:
             print("Could not write %s!" % vname)
             vname = vname+'_1'
@@ -243,7 +244,7 @@ for varname in varnames:
                     setattr(fo.variables[vname],vattr,getattr(vval,vattr))
         for vattr in umvar_atts:
             if hasattr(umvar,vattr) and getattr(umvar,vattr) != '':
-                setattr(fo.variables[vname],vattr,getattr(umvar,vattr)) 
+                fo.variables[vname].setncattr(vattr,getattr(umvar,vattr)) 
 # loop over all variables
 # write data
 print('writing data')
