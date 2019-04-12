@@ -45,9 +45,6 @@ import numpy as np
 import re
 from datetime import datetime
 import traceback
-import stashvar
-
-heavyside = None
 
 parser = argparse.ArgumentParser(description="Convert UM fieldsfile to netCDF.")
 parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
@@ -60,6 +57,8 @@ parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                     default=False, help='verbose output')
 parser.add_argument('--nomask', dest='nomask', action='store_true', 
                     default=False, help="Don't apply Heaviside function mask to pressure level fields.\n Default is to apply masking if the Heaviside field is available in the input file.")
+parser.add_argument('--cmip6', dest='cmip6', action='store_true', 
+                    default=False, help="Use a CMIP6 version of the name mapping table.")
 
 args = parser.parse_args()
 
@@ -80,6 +79,12 @@ except:
         """)
     exit()
 
+if args.cmip6:    
+    import stashvar_cmip6 as stashvar
+else:
+    import stashvar
+
+    
 # Rename dimension to commonly used names
 renameDims = {'latitude0':'lat','longitude0':'lon','latitude1':'lat_1',\
               'longitude1':'lon_1','longitude2':'lon_2','z4_p_level':'lev','z9_p_level':'lev',\
@@ -135,6 +140,77 @@ def write_nc_dimension(dimension,fi,fo):
         renameDims[dimension] = dimout
     print("Wrote dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen))
 
+def findvar(vars, section, item):
+    for v in vars.values():
+        if hasattr(v,'stash_section') and v.stash_section[0] == section and v.stash_item[0] == item:
+            return v
+    raise KeyError
+
+global heavyside_uv, heavyside_t
+heavyside_uv = heavyside_t = None
+
+def apply_mask(var,heavyside):
+    # Mask variable by heavyside function
+    fVal = var.getMissing()
+    vorder = var.getOrder()
+    horder = heavyside.getOrder()
+    if vorder != horder:
+        print(vorder,'!= heavyside',horder)
+        raise Exception('Unable to apply pressure level mask because of dimension order mismatch')
+    if var.shape == heavyside.shape:
+        var = MV.where(np.greater(heavyside[:],hcrit),var/heavyside[:],fVal)
+        var.fill_value = var.missing_value = fVal
+        return var
+    else:
+        # Do they just differ in number of levels with variable
+        # levels being a subset
+        zdim = vorder.find('z')
+        vshape = list(var.shape)
+        hshape = list(heavyside.shape)
+        # Compare shapes without the z dimension
+        vshape[zdim] = hshape[zdim] = 0
+        if vshape == hshape:
+            # Convert to list so that index works later
+            vlevs = var.getLevel()[:].tolist()
+            hlevs = heavyside.getLevel()[:].tolist()
+            assert zdim==1
+            # Need to make a copy first
+            newvar = var[:]
+            if set(vlevs).issubset(set(hlevs)):
+                # Then we can do the match
+                for k in range(len(vlevs)):
+                    kh = hlevs.index(vlevs[k])
+                    print("Matching levels", k, kh)
+                    newvar[:,k] = MV.where(np.greater(heavyside[:,kh],hcrit),newvar[:,k]/heavyside[:,kh],fVal)
+                newvar.fill_value = newvar.missing_value = fVal
+                return newvar
+            
+        print("Problem applying pressure level mask for variable %d" %(item_code))
+        print(var.shape,'!= heavyside',heavyside.shape)
+        raise Exception('Unable to apply pressure level mask because of shape mismatch')
+    return var
+
+def heavyside_mask(var,item_code):
+    global heavyside_uv, heavyside_t
+    # Variable range here is correct at vn11.3
+    if 30201 <= item_code <= 30288  or 30302 <= item_code <= 30303:
+        if not heavyside_uv:
+            # Set heavyside variable if doesn't exist
+            try:
+                heavyside_uv = findvar(fi.variables,30,301)
+            except KeyError:
+                raise Exception("Heavyside variable on UV grid required for pressure level masking of %d not found" % item_code)
+        return apply_mask(var,heavyside_uv)
+    elif 30293 <= item_code <= 30298:
+        if not heavyside_t:
+            # set heavyside variable if doesn't exist
+            try:
+                heavyside_t = findvar(fi.variables,30,304)
+            except KeyError:
+                raise Exception("Heavyside variable on T grid required for pressure level masking of %d not found" % item_code)
+        return apply_mask(var,heavyside_t)
+    else:
+        raise Exception("Unexpected item code %d in heavyside_mask function" % item_code)
 
 # Main program begins here. 
 # First, open the input UM file (fieldsfile)  
@@ -186,7 +262,7 @@ hcrit = 0.5               # critical value of Heavyside function for inclusion.
 
 varnames_out={}
 # loop over all variables
-# create variables but dont write data
+# create variables but don't write data yet
 print('creating variables...')
 for varname in varnames:
     vval = fi.variables[varname]
@@ -253,40 +329,18 @@ try:
     # Get number of times from first variable used
     for varname,vname_out in varnames_out.items():
         vval = fi.variables[varname]
-        sp = vval.shape
-        #remove singleton dim
-        if len(sp) == 4 and sp[1] == 1:
-            vval = vval[:,0,:,:]
-        # P LEV/UV GRID with missing values treated as zero;
-        # needs to be corrected by Heavyside fn
         stash_section = vval.stash_section[0]
         stash_item = vval.stash_item[0]
         item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
-        if (30201 <= item_code <= 30303) and mask and item_code!=30301:
-            if not heavyside:
-                # set heavyside variable if doesn't exist
-                try:
-                    heavyside = fi.variables['psag']
-                    # check variable code as well as the name.
-                    if (heavyside.stash_item[0] != 301 or
-                        heavyside.stash_section[0] != 30) :
-                        raise error, "Heavyside variable code mismatch"
-                except Exception: #heaviside function not available
-                    #use temperature zeros as mask (only works for instantaneous values)
-                    try:
-                        heavyside=fi.variables['temp_1'] #second temp field is on pressure levels
-                    except:
-                        heavyside=fi.variables['temp'] #take temp if there is no temp_1
-                    heavyside=np.array(heavyside[:]!=0,dtype=np.float32)
-                    # print(np.shape(heavyside))
-            # Mask variable by heavyside function
-            fVal = vval.getMissing()         	
-            if vval.shape == heavyside.shape:
-                vval = MV.where(np.greater(heavyside[:],hcrit),vval/heavyside[:],fVal)
-                vval.fill_value = vval.missing_value = fVal
-            else:
-                print(vname,vval.shape,'!= heavyside',heavyside.shape)
-                print(vname+' not masked')
+        if 30201 <= item_code <= 30303 and item_code not in [30301, 30304] and mask:
+            # P LEV field with missing values treated as zero needs
+            # to be corrected by Heavyside fn. Exclude the Heavyside
+            # fields themselves (301 and 304).
+            vval = heavyside_mask(vval,item_code)       
+        sp = vval.shape
+        # Remove singleton dimension
+        if len(sp) == 4 and sp[1] == 1:
+            vval = vval[:,0,:,:]
         fo.variables[vname_out][:] = vval[:]
         print('written: ',varname, 'to',vname_out)
     print('finished')
