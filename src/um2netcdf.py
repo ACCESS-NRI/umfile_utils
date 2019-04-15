@@ -9,27 +9,11 @@
 # nomask option turns this off (special case for runs where these were
 # saved differently).
 
-import cdms2, cdtime, sys, getopt, datetime
+from __future__ import print_function
+import cdms2, cdtime, sys, getopt, datetime, argparse
 from cdms2 import MV
 import numpy as np
 import stashvar
-
-class error(Exception):
-    pass
-
-def usage():
-    print "Usage: um2netcdf.py [-a] [-4] -i ifile -o ofile -s section,item [-m cell_methods] [--nomask] [-v vname]"
-
-def help():
-    usage()
-    print " -i input_file (Met Office fieldsfile format)"
-    print " -o output file (netcdf, appended to if it already exists)"
-    print " -s section,item (Stash code for variable)"
-    print " -m cell_methods (required if there are multiple instances of a variable with different cell methods, e.g. ave, min and max temp)"
-    print " -a (calculate time average)"
-    print " -d Force daily time values (work around cdms error)"
-    print " -v vname Override default variable name in output file"
-    print " -4 netCDF4 output (default netCDF3)"
 
 def get_cell_methods(v):
     if hasattr(v,'cell_methods'):
@@ -39,89 +23,77 @@ def get_cell_methods(v):
     else:
         return ""
 
-# vname is the name to use in the output file
-cell_methods = None
-average = False
-mask = True
-ifile = None
-ofile = None
-forcedaily = False
-vname = None
-usenc4 = False
-try:
-    opts, args = getopt.getopt(sys.argv[1:], '4adhi:o:m:s:v:',['nomask'])
-    for o, a in opts:
-        if o == '-4':
-            usenc4 = True
-        elif o == '-a':
-            average = True
-        elif o == '-h':
-            help()
-            sys.exit(0)
-        elif o == '-d':
-            forcedaily = True
-        elif o == '-i':
-            ifile = a
-        elif o == '-m':
-            cell_methods = a
-        elif o == '--nomask':
-            mask = False
-        elif o == '-o':
-            ofile = a
-        elif o == '-v':
-            vname = a
-        elif o == '-s':
-            # STASH section, item
-            stash_section = int(a.split(',')[0])
-            stash_item = int(a.split(',')[1])
-except getopt.error:
-    usage()
-    sys.exit(1)
+def findvar(vars, section, item):
+    for v in vars.values():
+        if hasattr(v,'stash_section') and v.stash_section[0] == section and v.stash_item[0] == item:
+            return v
+    raise KeyError
+
+parser = argparse.ArgumentParser(description="Convert selected variables from UM fieldsfile to netCDF.")
+parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
+parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file (appended to if it already exists)"')
+parser.add_argument('-s', dest='stashcode', required=True, help=' section,item (Stash code for variable)')
+parser.add_argument('-v', dest='vname', help='Override default variable name in output file')
+parser.add_argument('-m', dest='cell_methods', help='cell_methods (required if there are multiple instances of a variable with different cell methods, e.g. ave, min and max temp)')
+parser.add_argument('-a', dest='average', action='store_true', 
+                    default=False, help="Calculate time average.")
+parser.add_argument('-d', dest='forcedaily', action='store_true', 
+                    default=False, help="Force daily time values (work around cdms error)")
+parser.add_argument('--nomask', dest='nomask', action='store_true', 
+                    default=False, help="Don't apply Heavyside function mask to pressure level fields.")
+parser.add_argument('-3', dest='usenc3', action='store_true', 
+                    default=False, help="netCDF3 output (default netCDF4)")
+
+args = parser.parse_args()
+
+mask = not args.nomask
+stash_section = int(args.stashcode.split(',')[0])
+stash_item = int(args.stashcode.split(',')[1])
 
 try:
-    d = cdms2.open(ifile)
+    d = cdms2.open(args.ifile)
 except:
-    print "Error opening file", ifile
+    print("Error opening file", args.ifile)
     usage()
     sys.exit(1)
 
 var = None
-print "Matching variables"
+print("Matching variables")
 for vn in d.variables:
     v = d.variables[vn]
     # Need to check whether it really has a stash_item to skip coordinate variables
     
     # Note: need to match both item and section number
     if hasattr(v,'stash_item') and v.stash_item[0] == stash_item and v.stash_section[0] == stash_section:
-        print vn, get_cell_methods(v)
+        print(vn, get_cell_methods(v))
         # Need to cope with variables that have no cell methods so check
         # cell_methods is None 
-        if cell_methods == None or (cell_methods != None and get_cell_methods(v) == cell_methods):
+        if args.cell_methods == None or (args.cell_methods != None and get_cell_methods(v) == args.cell_methods):
             # print "Cell match"
             if var:
                 # Multiple match
-                raise error, "Multiple variables match"
+                raise Exception("Multiple variables match")
             else:
                 var = v
             
 if not var:
-    raise error, "Variable not found %d %d" % ( stash_item, stash_section)
+    raise Exception("Variable not found %d %d" % ( stash_item, stash_section))
 
-print var
+print(var)
 
 grid = var.getGrid()
 time = var.getTime()
 timevals = np.array(time[:])
-if forcedaily:
+if args.forcedaily:
     # Work around cdms error in times
     for k in range(len(time)):
         timevals[k] = round(timevals[k],1)
 
 item_code = var.stash_section[0]*1000 + var.stash_item[0]
 umvar = stashvar.StashVar(item_code,var.stash_model[0])
-if not vname:
+if not args.vname:
     vname = umvar.name
-print vname, var[0,0,0,0]
+print(vname, var[0,0,0,0])
 
 hcrit = 0.5 # Critical value of Heavyside function for inclusion.
  
@@ -129,16 +101,16 @@ hcrit = 0.5 # Critical value of Heavyside function for inclusion.
 
 #  If output file exists then append to it, otherwise create a new file
 try:
-    file = cdms2.openDataset(ofile, 'r+')
+    file = cdms2.openDataset(args.ofile, 'r+')
     newv = file.variables[vname]
     newtime = newv.getTime()
 except cdms2.error.CDMSError:
-    if not usenc4:
+    if args.usenc3:
         # Force netCDF3 output
         cdms2.setNetcdfShuffleFlag(0)
         cdms2.setNetcdfDeflateFlag(0)
         cdms2.setNetcdfDeflateLevelFlag(0)
-    file = cdms2.createDataset(ofile)
+    file = cdms2.createDataset(args.ofile)
     file.history = "Created by um2netcdf.py."
     # Stop it creating the bounds_latitude, bounds_longitude variables
     cdms2.setAutoBounds("off")
@@ -198,7 +170,7 @@ except cdms2.error.CDMSError:
     except AttributeError:
         pass
 
-file.history += "\n%s: Processed %s" % (datetime.datetime.today().strftime('%Y-%m-%d %H:%M'), ifile)
+file.history += "\n%s: Processed %s" % (datetime.datetime.today().strftime('%Y-%m-%d %H:%M'), args.ifile)
 
 # Get appropriate file position
 # Uses 360 day calendar, all with same base time so must be 30 days on.
@@ -206,12 +178,12 @@ k = len(newtime)
 # float needed here to get the later logical tests to work properly
 avetime = float(MV.average(timevals[:])) # Works in either case
 if k>0:
-    if average:
+    if args.average:
         #if newtime[-1] != (avetime - 30):
         # For Gregorian calendar relax this a bit
         # Sometimes get differences slightly > 31
         if not 28 <= avetime - newtime[-1] <= 31.5:
-            raise error, "Times not consecutive %f %f %f" % (newtime[-1], avetime, timevals[0])
+            raise Exception("Times not consecutive %f %f %f" % (newtime[-1], avetime, timevals[0]))
     else:
         if k > 1:
             # Need a better test that works when k = 1. This is just a
@@ -219,20 +191,26 @@ if k>0:
             # For monthly data
             if 27 < newtime[-1] - newtime[-2] < 32:
                 if not 27 < timevals[0] - newtime[-1] < 32:
-                    raise error, "Monthly times not consecutive %f %f " % (newtime[-1], timevals[0])
+                    raise Exception("Monthly times not consecutive %f %f " % (newtime[-1], timevals[0]))
             else:
                 if not np.allclose( newtime[-1] + (newtime[-1]-newtime[-2]), timevals[0] ):
-                    raise error, "Times not consecutive %f %f " % (newtime[-1], timevals[0])
+                    raise Exception("Times not consecutive %f %f " % (newtime[-1], timevals[0]))
 
-if (30201 <= item_code <= 30303) and mask:
+if ( 30201 <= item_code <= 30288  or 30302 <= item_code <= 30303 ) and mask:
     # P LEV/UV GRID with missing values treated as zero.
     # Needs to be corrected by Heavyside fn
-    heavyside = d.variables['psag']
-    # Check variable code as well as the name.
-    if heavyside.stash_item[0] != 301 or heavyside.stash_section[0] != 30:
-        raise error, "Heavyside variable code mismatch"
+    try:
+        heavyside = findvar(d.variables,30,301)
+    except KeyError:
+        raise Exception("Heavyside variable on UV grid required for pressure level masking of %d not found" % item_code)
+if ( 30293 <= item_code <= 30298 ) and mask:
+    # P LEV/T GRID
+    try:
+        heavyside = findvar(d.variables,30,304)
+    except KeyError:
+        raise Exception("Heavyside variable on T grid required for pressure level masking of %d not found" % item_code)
 
-if average:
+if args.average:
     newtime[k] = avetime
     if var.shape[1] > 1:
         newv[k] = MV.average(var[:],axis=0).astype(np.float32)
