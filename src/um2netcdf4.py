@@ -19,32 +19,13 @@
 # heavyside function, used for masking, were not saved).
 #
 # Acknowledgement:
-#   This script is designed taking ideas from previous python scripts
-# written by Martin Dix and Petteri Uotila.
-#
-# Harun Rashid (harun.rashid@csiro.au)
-# 20-JUL-2011
-#
-# Peter Uhe (Peter.Uhe@csiro.au)
-# 29-May 2013 modified to use netcdf4 libraries with zlib compression. 
-#
-# 3-Dec 2013 set up for raijin
-# To use on raijin set up the environment by the following commands:
-#
-# module load python/2.7.5
-# module use /projects/access/modules
-# module load pythonlib/cdat-lite/6.0rc2-fixed
-# module load pythonlib/netCDF4/1.0.4
-
-#TODO possibly append libraries to the end of the path, 
-# rather than requiring the environment to be set
+# Written by Martin Dix, Petteri Uotila, Harun Rashid and Peter Uhe.
 
 from __future__ import print_function
-import os, sys, argparse
+import os, sys, argparse, datetime
 import numpy as np
-import re
-from datetime import datetime
-import traceback
+import cdms2, cdtime, netCDF4
+from cdms2 import MV
 
 parser = argparse.ArgumentParser(description="Convert UM fieldsfile to netCDF.")
 parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
@@ -59,25 +40,14 @@ parser.add_argument('--nomask', dest='nomask', action='store_true',
                     default=False, help="Don't apply Heaviside function mask to pressure level fields.\n Default is to apply masking if the Heaviside field is available in the input file.")
 parser.add_argument('--cmip6', dest='cmip6', action='store_true', 
                     default=False, help="Use a CMIP6 version of the name mapping table.")
+parser.add_argument('--simple', dest='simple', action='store_true', 
+                    default=False, help="Use a simple names of form fld_s01i123.")
 
 args = parser.parse_args()
 
 mask = not args.nomask
 
 print("Using python version: "+sys.version.split()[0])
-
-try:
-    import cdms2, cdtime
-    from cdms2 import MV
-    from netCDF4 import Dataset
-except:
-    print("""ERROR: modules not loaded
-    Please run:
-        module use ~access/modules
-        module load pythonlib/netCDF4
-        module load pythonlib/cdat-lite
-        """)
-    exit()
 
 if args.cmip6:    
     import stashvar_cmip6 as stashvar
@@ -98,7 +68,9 @@ renameDims = {'latitude0':'lat','longitude0':'lon','latitude1':'lat_1',\
 #				'z5_toa','z2_surface','z3_msl','z4_msl','z12_soil',\
 #				'z13_level','z15_msl','z1_surface','z4_toa','z5_level',\
 #				'z9_height','z_pseudo3']
-excludeDims=[]
+
+# Not really clear what this is, but no variables depend on it.
+excludeDims=['nv']
 
 # a function to create dimensions in the netCDF file
 def write_nc_dimension(dimension,fi,fo):
@@ -227,9 +199,9 @@ if os.path.exists(args.ofile):
 # Create an output netCDF file
 ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT', 
              3:'NETCDF4', 4:'NETCDF4_CLASSIC'}
-fo=Dataset(args.ofile,'w',format=ncformats[args.nckind])
+fo = netCDF4.Dataset(args.ofile,'w',format=ncformats[args.nckind])
 
-history = "Converted to netCDF by %s on %s." % (os.getenv('USER'),datetime.now().strftime("%Y-%m-%d"))
+history = "Converted to netCDF by %s on %s." % (os.getenv('USER'),datetime.datetime.now().strftime("%Y-%m-%d"))
 
 # global attributes
 for attribute in fi.attributes:
@@ -259,12 +231,22 @@ sys.stdout.flush()
 umvar_atts = ["name","long_name","standard_name","units"]
 hcrit = 0.5               # critical value of Heavyside function for inclusion.
 
+# Create a list of variable names sorted by stash code
+snames = []
+for varname in varnames:
+    vval = fi.variables[varname]
+    if hasattr(vval,'stash_item') and hasattr(vval,'stash_section'):
+        stash_section = vval.stash_section[0]
+        stash_item = vval.stash_item[0]
+        item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
+        snames.append((item_code,varname))
+snames.sort()
 
-varnames_out={}
+varnames_out=[]
 # loop over all variables
 # create variables but don't write data yet
 print('creating variables...')
-for varname in varnames:
+for tmpval, varname in snames:
     vval = fi.variables[varname]
     vdims = vval.listdimnames()
 	#remove excludDims:
@@ -281,15 +263,21 @@ for varname in varnames:
         item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
         umvar = stashvar.StashVar(item_code,vval.stash_model[0])
         vname = umvar.name
+        if args.simple:
+            vname = 'fld_s%2.2di%3.3d' % (stash_section, stash_item)
 
         if hasattr(vval,"cell_methods") and vval.cell_methods == "time0: max":
-            vname = vname+"max"
+            vname = vname+"_max"
         if hasattr(vval,"cell_methods") and vval.cell_methods == "time0: min":
-            vname = vname+"min"
+            vname = vname+"_min"
         
         # write data
+        if vval.dtype in (np.int32, np.int64):
+            vtype = np.int32
+        else:
+            vtype = np.float32
         try:
-            fo.createVariable(vname, vval.dtype.char, tuple(vdims),
+            fo.createVariable(vname, vtype, tuple(vdims),
                               zlib=True, complevel=args.deflate_level,
                               fill_value=getattr(vval,'_FillValue'))
             print(vname +"\t created... from "+ varname)
@@ -298,7 +286,7 @@ for varname in varnames:
             print("Could not write %s!" % vname)
             vname = vname+'_1'
             try:
-	        fo.createVariable(vname, vval.dtype.char, tuple(vdims),
+	        fo.createVariable(vname, vtype, tuple(vdims),
                                   zlib=True, complevel=args.deflate_level,
                                   fill_value=getattr(vval,'_FillValue'))
             except Exception,e:
@@ -309,45 +297,44 @@ for varname in varnames:
                                   fill_value=getattr(vval,'_FillValue'))
             print("Now written as %15s ..." % vname)
             sys.stdout.flush()
-        varnames_out[varname]=vname
+        varnames_out.append((varname,vname))
 
         # variable attributes
         for vattr in vval.listattributes():
             if getattr(vval,vattr) is None:
                 print("Could not write attribute %s for %s." % (vattr,vname))
             else:
-                if vattr!='_FillValue':
-                    setattr(fo.variables[vname],vattr,getattr(vval,vattr))
+                if vattr not in ('_FillValue', 'stash_model', 'lookup_source'):
+                    attval = getattr(vval,vattr)
+                    if hasattr(attval,'dtype') and attval.dtype == np.int64:
+                        attval = attval.astype(np.int32)
+                    setattr(fo.variables[vname],vattr,attval)
+
         for vattr in umvar_atts:
             if hasattr(umvar,vattr) and getattr(umvar,vattr) != '':
-                fo.variables[vname].setncattr(vattr,getattr(umvar,vattr)) 
-# loop over all variables
+                fo.variables[vname].setncattr(vattr,getattr(umvar,vattr))
+                
+# Loop over all variables writing data
 # write data
 print('writing data')
-try:
-    # Assume same number of times for all variables
-    # Get number of times from first variable used
-    for varname,vname_out in varnames_out.items():
-        vval = fi.variables[varname]
-        stash_section = vval.stash_section[0]
-        stash_item = vval.stash_item[0]
-        item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
-        if 30201 <= item_code <= 30303 and item_code not in [30301, 30304] and mask:
-            # P LEV field with missing values treated as zero needs
-            # to be corrected by Heavyside fn. Exclude the Heavyside
-            # fields themselves (301 and 304).
-            vval = heavyside_mask(vval,item_code)       
-        sp = vval.shape
-        # Remove singleton dimension
-        if len(sp) == 4 and sp[1] == 1:
-            vval = vval[:,0,:,:]
-        fo.variables[vname_out][:] = vval[:]
-        print('written: ',varname, 'to',vname_out)
-    print('finished')
-except Exception, e:
-    print('Error :(' ,e)
-    traceback.print_exc()
-    raise e
+# Assume same number of times for all variables
+# Get number of times from first variable used
+for varname, vname_out in varnames_out:
+    vval = fi.variables[varname]
+    stash_section = vval.stash_section[0]
+    stash_item = vval.stash_item[0]
+    item_code = vval.stash_section[0]*1000 + vval.stash_item[0]
+    if 30201 <= item_code <= 30303 and item_code not in [30301, 30304] and mask:
+        # P LEV field with missing values treated as zero needs
+        # to be corrected by Heavyside fn. Exclude the Heavyside
+        # fields themselves (301 and 304).
+        vval = heavyside_mask(vval,item_code)       
+    sp = vval.shape
+    # Remove singleton dimension
+    if len(sp) == 4 and sp[1] == 1:
+        vval = vval[:,0,:,:]
+    fo.variables[vname_out][:] = vval[:]
+    print('written: ',varname, 'to',vname_out)
+print('finished')
 
-sys.stdout.flush()
 fo.close() 
