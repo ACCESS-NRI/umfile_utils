@@ -57,6 +57,13 @@ def cubewrite(cube,sman,compression):
         cube.remove_coord('forecast_period')
         cube.remove_coord('forecast_reference_time')
 
+    # Check whether any of the coordinates is a pseudo-dimension
+    # with integer values and if so reset to int32 to prevent
+    # problems with possible later conversion to netCDF3
+    for coord in cube.coords():
+        if coord.points.dtype == np.int64:
+            coord.points = coord.points.astype(np.int32)
+
     try:
         if cube.coord_dims('time'):
             sman.write(cube, zlib=True, complevel=compression, unlimited_dimensions=['time'])
@@ -120,7 +127,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
     with iris.fileformats.netcdf.Saver(outfile, nc_formats[nckind]) as sman:
 
         # Add global attributes
-        history = "File %s with converted with um2netcdf_iris.py at %s" % (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        history = "File %s with converted with um2netcdf_iris_mon.py at %s" % (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
 
