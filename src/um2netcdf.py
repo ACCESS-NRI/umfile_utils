@@ -10,7 +10,7 @@
 # saved differently).
 
 from __future__ import print_function
-import cdms2, cdtime, sys, getopt, datetime, argparse
+import cdms2, cdtime, sys, getopt, datetime, argparse, netCDF4, os
 from cdms2 import MV
 import numpy as np
 import stashvar
@@ -41,9 +41,10 @@ parser.add_argument('-d', dest='forcedaily', action='store_true',
                     default=False, help="Force daily time values (work around cdms error)")
 parser.add_argument('--nomask', dest='nomask', action='store_true', 
                     default=False, help="Don't apply Heavyside function mask to pressure level fields.")
-parser.add_argument('-3', dest='usenc3', action='store_true', 
-                    default=False, help="netCDF3 output (default netCDF4)")
-
+parser.add_argument('-k', dest='nckind', required=False, type=int,
+                    default=4, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 4', choices=[1,2,3,4])
+parser.add_argument('--deflate', dest='deflate_level', required=False, type=int,
+                    default=1, help='Compression level for netCDF4 output from 0 (none) to 9 (max). Default 1')
 args = parser.parse_args()
 
 mask = not args.nomask
@@ -97,80 +98,79 @@ print(vname, var[0,0,0,0])
 
 hcrit = 0.5 # Critical value of Heavyside function for inclusion.
  
-# print "LEN(TIME)", len(time)
-
 #  If output file exists then append to it, otherwise create a new file
-try:
-    file = cdms2.openDataset(args.ofile, 'r+')
-    newv = file.variables[vname]
-    newtime = newv.getTime()
-except cdms2.error.CDMSError:
-    if args.usenc3:
-        # Force netCDF3 output
-        cdms2.setNetcdfShuffleFlag(0)
-        cdms2.setNetcdfDeflateFlag(0)
-        cdms2.setNetcdfDeflateLevelFlag(0)
-    file = cdms2.createDataset(args.ofile)
-    file.history = "Created by um2netcdf.py."
-    # Stop it creating the bounds_latitude, bounds_longitude variables
-    cdms2.setAutoBounds("off")
+# Different versions of netCDF4 module give different exceptions, so
+# test for existence explicitly
+exists = os.path.exists(args.ofile)
+if exists:
+    f = netCDF4.Dataset(args.ofile, 'r+')
+    newv = f.variables[vname]
+    newtime = f.variables['time']
+else:
+    ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT', 
+                 3:'NETCDF4', 4:'NETCDF4_CLASSIC'}
+    f = netCDF4.Dataset(args.ofile,'w', format=ncformats[args.nckind])
+    f.history = "Created by um2netcdf.py."
 
-    # By default get names like latitude0, longitude1
-    # Need this awkwardness to get the variable/dimension name set correctly
-    # Is there a way to change the name cdms uses after 
-    # newlat = newgrid.getLatitude() ????
-    newlat = file.createAxis('lat', grid.getLatitude()[:])
+    f.createDimension('lat', len(grid.getLatitude()[:]))
+    newlat = f.createVariable('lat',np.float32,('lat',))
     newlat.standard_name = "latitude"
     newlat.axis = "Y"
     newlat.units = 'degrees_north'
-    newlon = file.createAxis('lon', grid.getLongitude()[:])
+    newlat[:]= grid.getLatitude()[:]
+    f.createDimension('lon', len(grid.getLongitude()[:]))
+    newlon = f.createVariable('lon',np.float32,('lon',))
     newlon.standard_name = "longitude"
     newlon.axis = "X"
     newlon.units = 'degrees_east'
+    newlon[:]= grid.getLongitude()[:]
 
     lev = var.getLevel()
     if len(lev) > 1:
-        newlev = file.createAxis('lev', lev[:])
+        f.createDimension('lev', len(lev))
+        newlev = f.createVariable('lev', np.float32, ('lev'))
         for attr in ('standard_name', 'units', 'positive', 'axis'):
             if hasattr(lev,attr):
                 setattr(newlev, attr, getattr(lev,attr))
+        newlev[:] = lev[:]
     else:
         newlev = None
                                   
-    newtime = file.createAxis('time', None, cdms2.Unlimited)
+    f.createDimension('time', None)
+    newtime = f.createVariable('time', np.float64, ('time',))
     newtime.standard_name = "time"
     newtime.units = time.units # "days since " + `baseyear` + "-01-01 00:00"
-    newtime.setCalendar(time.getCalendar())
+    newtime.calendar = time.calendar
     newtime.axis = "T"
     
     if var.dtype == np.dtype('int32'):
-        vtype = cdms2.CdInt
+        vtype = np.int32
         missval = -2147483647
     else:
-        vtype = cdms2.CdFloat
-        missval = 1.e20
+        vtype = np.float32
+        # UM missing value
+        missval = -2.**30
       
     if newlev:
-        newv = file.createVariable(vname, vtype, (newtime, newlev, newlat, newlon))
+        newv = f.createVariable(vname, vtype, ('time', 'lev', 'lat', 'lon'), fill_value=missval, zlib=True, complevel=args.deflate_level)
     else:
-        newv = file.createVariable(vname, vtype, (newtime, newlat, newlon))
+        newv = f.createVariable(vname, vtype, ('time', 'lat', 'lon'), fill_value=missval, zlib=True, complevel=args.deflate_level)
     for attr in ("standard_name", "long_name", "units"):
         if hasattr(umvar, attr):
-            newv.setattribute(attr, getattr(umvar,attr))
+            setattr(newv,attr, getattr(umvar,attr))
     if hasattr(var,'cell_methods'):
         # Change the time0 to time
         newv.cell_methods = 'time: '  + v.cell_methods.split()[1]
     newv.stash_section = var.stash_section[0]
     newv.stash_item = var.stash_item[0]
     newv.missing_value = missval
-    newv._FillValue = missval
 
     try:
         newv.units = var.units
     except AttributeError:
         pass
 
-file.history += "\n%s: Processed %s" % (datetime.datetime.today().strftime('%Y-%m-%d %H:%M'), args.ifile)
+f.history += "\n%s: Processed %s" % (datetime.datetime.today().strftime('%Y-%m-%d %H:%M'), args.ifile)
 
 # Get appropriate file position
 # Uses 360 day calendar, all with same base time so must be 30 days on.
@@ -218,15 +218,15 @@ if args.average:
         newv[k] = MV.average(var[:],axis=0)[0].astype(np.float32)
 else:
     for i in range(len(timevals)):
+        newtime[k+i] = timevals[i]
         if var.shape[1] > 1:
             # Multi-level
             if (30201 <= item_code <= 30303) and mask:
-                newv[k+i] = np.where( np.greater(heavyside[i], hcrit), var[i]/heavyside[0], newv.getMissing())
+                newv[k+i] = np.where( np.greater(heavyside[i], hcrit), var[i]/heavyside[0], var.getMissing())
             else:
                 newv[k+i] = var[i]
         else:
-            newv[k+i] = var[i,0]
+            newv[k+i] = var[i]
 
-        newtime[k+i] = timevals[i]
 
-file.close()
+f.close()
