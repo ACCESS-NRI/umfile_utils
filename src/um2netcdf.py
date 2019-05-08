@@ -70,7 +70,7 @@ for vn in d.variables:
         # Need to cope with variables that have no cell methods so check
         # cell_methods is None 
         if args.cell_methods == None or (args.cell_methods != None and get_cell_methods(v) == args.cell_methods):
-            # print "Cell match"
+            # print("Cell match", vn, v.cell_methods)
             if var:
                 # Multiple match
                 raise Exception("Multiple variables match")
@@ -160,7 +160,7 @@ else:
             setattr(newv,attr, getattr(umvar,attr))
     if hasattr(var,'cell_methods'):
         # Change the time0 to time
-        newv.cell_methods = 'time: '  + v.cell_methods.split()[1]
+        newv.cell_methods = 'time: '  + var.cell_methods.split()[1]
     newv.stash_section = var.stash_section[0]
     newv.stash_item = var.stash_item[0]
     newv.missing_value = missval
