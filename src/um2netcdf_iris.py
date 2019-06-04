@@ -4,25 +4,26 @@ import stashvar
 from iris.coords import CellMethod
 import cf_units, cftime
 
-iris.FUTURE.netcdf_no_unlimited = True
+if iris.__version__ < '2.0.0':
+    iris.FUTURE.netcdf_no_unlimited = True
 
 def convert_proleptic(time):
     # Convert from hour to days and shift origin from 1970 to 0001
-    t0 = cftime.DatetimeProlepticGregorian(1,1,1)
-    # datetime gets handled like proleptic gregorian so simple difference works
+    newunits = cf_units.Unit("days since 0001-01-01 00:00", calendar='proleptic_gregorian')
     # Need a copy because can't assign to time.points[i]
     tvals = np.array(time.points)
     tbnds = np.array(time.bounds)
     for i in range(len(time.points)):
-        delta = time.units.num2date(tvals[i]) - t0
-        tvals[i] = delta.days + delta.seconds/86400.
-        delta = time.units.num2date(tbnds[i][0]) - t0
-        tbnds[i][0] = delta.days + delta.seconds/86400.
-        delta = time.units.num2date(tbnds[i][1]) - t0
-        tbnds[i][1] = delta.days + delta.seconds/86400.
+        date = time.units.num2date(tvals[i])
+        newdate = cftime.DatetimeProlepticGregorian(date.year, date.month, date.day, date.hour, date.minute, date.second)
+        tvals[i] = newunits.date2num(newdate)
+        for j in range(2):
+            date = time.units.num2date(tbnds[i][j])
+            newdate = cftime.DatetimeProlepticGregorian(date.year, date.month, date.day, date.hour, date.minute, date.second)
+            tbnds[i][j] = newunits.date2num(newdate)
     time.points = tvals
     time.bounds = tbnds
-    time.units = cf_units.Unit("days since 0001-01-01 00:00", calendar='proleptic_gregorian')
+    time.units = newunits
 
 def cubewrite(cube,sman,compression,use64bit):
     try:
