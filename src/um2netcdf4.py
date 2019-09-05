@@ -55,71 +55,97 @@ if args.cmip6:
     import stashvar_cmip6 as stashvar
 else:
     import stashvar
-
     
-# Rename dimension to commonly used names
-renameDims = {}
-# {'latitude0':'lat','longitude0':'lon','latitude1':'lat_1',\
-#               'longitude1':'lon_1','longitude2':'lon_2','z4_p_level':'lev','z9_p_level':'lev',\
-#               'z3_p_level':'lev','time0':'time','time1':'time_1',\
-#         'z6_hybrid_sigmap':'z0_hybrid_height','z5_hybrid_sigmap':'z0_hybrid_height'}
+def transform_dimensions(fi):
+    # First work out which dimensions to exclude
+    excludeDims=['nv']
+    dims = set(fi.listdimension()) # set of all dim_names in the file
+    for dim in dims:
+        dobj = fi.dimensionobject(dim)
+        # Exclude unnecessary singleton dimensions
+        # Keep time, longitude (zonal means) and single pressure levels
+        # Negative level value used for 850 vorticity
+        if dobj.shape==(1,) and not (dobj.isTime() or dobj.isLongitude()):
+            if not dobj.isLevel() or dobj.long_name.endswith('(dummy level coordinate)') or dobj.getData()[0] < 0.:
+                excludeDims.append(dim)
+    dimns = list(dims.difference(excludeDims)) # exclude those in excludeDims
+    dimns.sort()
 
-# Not really clear what this is, but no variables depend on it and lack of units
-# causes problems
-excludeDims=['nv']
+    print("Excluded dimensions", excludeDims)
+    print("Remaining dimensions", dimns)
+
+    renameDims = {}
+    for dim in dimns:
+        dobj = fi.dimensionobject(dim)
+        dval = dobj.getData()
+        renamed = False
+        long_name = None
+        if dobj.isTime():
+            if dim == 'time0':
+                # Most files have only a single dimension
+                dimout = 'time'
+                renamed = True
+        # see if we need to rename output netcdf dimension name
+        elif dobj.isLatitude():
+            # Work out the grid
+            if args.nd_grid:
+                # Assuming it's global here
+                if dval[0] == -90.:
+                    dimout = 'lat'
+                else:
+                    dimout = 'lat_v'
+            else:
+                if dval[0] == -90.:
+                    dimout = 'lat_v'
+                else:
+                    dimout = 'lat'
+            if dimout == 'lat':
+                long_name = 'latitudes at T grid points'
+            elif dimout == 'lat_v':
+                long_name = 'latitudes at V grid points'
+            renamed = True
+        elif dobj.isLongitude():
+            # Work out the grid
+            if args.nd_grid:
+                # Assuming it's global here
+                if dval[0] == 0.:
+                    dimout = 'lon'
+                else:
+                    dimout = 'lon_u'
+            else:
+                if dval[0] == 0.:
+                    dimout = 'lon_u'
+                else:
+                    dimout = 'lon'
+            if dimout == 'lon':
+                long_name = 'longitudes at T grid points'
+            elif dimout == 'lon_u':
+                long_name = 'longitudes at U grid points'
+            renamed = True
+        elif dobj.isLevel():
+            if dim.endswith('p_level'):
+                dimout = 'z_p_level_%d' % len(dval)
+                renamed = True
+            elif dim.endswith('soil'):
+                dimout = 'z_soil_level'
+                renamed = True
+        if renamed:
+            renameDims[dim] = (dimout, long_name)
+        else:
+            renameDims[dim] = (dim, long_name)
+
+    print("Renamed", renameDims)
+    return renameDims
 
 # a function to create dimensions in the netCDF file
-def write_nc_dimension(dimension,fi,fo):
+def write_nc_dimension(dimension,renameDims,fi,fo):
     dobj = fi.dimensionobject(dimension)
     dval = dobj.getData()
-    dimout = renameDims[dimension] if dimension in renameDims else dimension
-    renamed = False
-    # make the time dimension "unlimited"
-    # 3 hourly files have an instantaneous and mean time dimension
+    dimout = renameDims[dimension][0]
     if dobj.isTime():
         dimlen = None
-        if dimension == 'time0':
-            # Most files have only a single dimension
-            dimout = 'time'
-            renamed = True
     else:
         dimlen = len(dval)
-    # see if we need to rename output netcdf dimension name
-    if dobj.isLatitude():
-        # Work out the grid
-        if args.nd_grid:
-            # Assuming it's global here
-            if dval[0] == -90.:
-                dimout = 'lat'
-            else:
-                dimout = 'lat_v'
-        else:
-            if dval[0] == -90.:
-                dimout = 'lat_v'
-            else:
-                dimout = 'lat'
-        renamed = True
-    if dobj.isLongitude():
-        # Work out the grid
-        if args.nd_grid:
-            # Assuming it's global here
-            if dval[0] == 0.:
-                dimout = 'lon'
-            else:
-                dimout = 'lon_u'
-        else:
-            if dval[0] == 0.:
-                dimout = 'lon_u'
-            else:
-                dimout = 'lon'
-        renamed = True
-    if dobj.isLevel():
-        if dimension.endswith('p_level'):
-            dimout = 'z_p_level_%d' % len(dval)
-            renamed = True
-        elif dimension.endswith('soil'):
-            dimout = 'z_soil_level'
-            renamed = True
     if args.verbose:
         print("Creating dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen))
     fo.createDimension(dimout,dimlen)
@@ -129,18 +155,10 @@ def write_nc_dimension(dimension,fi,fo):
         fo.createVariable(dimout,dval.dtype.char,(dimout,))
     for dattr in dobj.attributes:
         setattr(fo.variables[dimout],dattr,getattr(dobj,dattr))
-    if dimout == 'lat':
-        fo.variables[dimout].long_name = 'latitudes at T grid points'
-    elif dimout == 'lat_v':
-        fo.variables[dimout].long_name = 'latitudes at V grid points'
-    elif dimout == 'lon':
-        fo.variables[dimout].long_name = 'longitudes at T grid points'
-    if dimout == 'lon_u':
-        fo.variables[dimout].long_name = 'longitudes at U grid points'
+    long_name = renameDims[dimension][1]
+    if long_name:
+        fo.variables[dimout].long_name = long_name
     fo.variables[dimout][:] = dval
-    # update dimension mapping
-    if dimension in renameDims or renamed:
-        renameDims[dimension] = dimout
 
 def findvar(vars, section, item):
     for v in vars.values():
@@ -245,29 +263,16 @@ for attribute in fi.attributes:
 # variables to write
 varnames = fi.listvariables()
 
-# collect list of dimensions associated with these variables
-dims = set(fi.listdimension())             # set of all dim_names in the file
-for dim in dims:
-    dobj = fi.dimensionobject(dim)
-    # Exclude unnecessary singleton dimensions
-    # Keep time, longitude (zonal means) and single pressure levels
-    # Negative level value used for 850 vorticity
-    if dobj.shape==(1,) and not (dobj.isTime() or dobj.isLongitude()):
-        if not dobj.isLevel() or dobj.long_name.endswith('(dummy level coordinate)') or dobj.getData()[0] < 0.:
-            excludeDims.append(dim)
-dimns = list(dims.difference(excludeDims)) # exclude those in excludeDims
-dimns.sort()
-
-print("Excluded dimensions", excludeDims)
+renameDims = transform_dimensions(fi)
 
 # create dimensions
-for dimension in dimns:
-    write_nc_dimension(dimension,fi,fo)
+for dimension in sorted(renameDims):
+    write_nc_dimension(dimension,renameDims,fi,fo)
 if args.verbose:
     print("Finished writing dimensions...")
 
 umvar_atts = ["name","long_name","standard_name","units"]
-hcrit = 0.5               # critical value of Heavyside function for inclusion.
+hcrit = 0.5 # Critical value of Heavyside function for inclusion.
 
 # Create a list of variable names sorted by stash code
 snames = []
@@ -288,14 +293,14 @@ if args.verbose:
 for tmpval, varname in snames:
     vval = fi.variables[varname]
     vdims = vval.listdimnames()
-	#remove excludDims:
+    # remove excluded dims:
     for vdim in vdims:
-    	if vdim in excludeDims:
-    		vdims.remove(vdim)
+    	if vdim not in renameDims:
+    	    vdims.remove(vdim)
     # see if we need to rename variables netcdf dimensions
     for vdidx, vdim in enumerate(vdims):
         if vdim in renameDims:
-            vdims[vdidx] = renameDims[vdim]
+            vdims[vdidx] = renameDims[vdim][0]
     if hasattr(vval,'stash_item') and hasattr(vval,'stash_section'):
         stash_section = vval.stash_section[0]
         stash_item = vval.stash_item[0]
