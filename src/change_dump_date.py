@@ -13,19 +13,21 @@ ifile = sys.argv[1]
 
 f = umfile.UMFile(ifile, "r+")
 
-print "Initial Time", f.fixhd[FH_DTYear], f.fixhd[FH_DTMonth], f.fixhd[FH_DTDay], \
-      f.fixhd[FH_DTHour], f.fixhd[FH_DTMinute], f.fixhd[FH_DTSecond]
+print("Initial Time", f.fixhd[FH_DTYear], f.fixhd[FH_DTMonth],
+      f.fixhd[FH_DTDay], f.fixhd[FH_DTHour], f.fixhd[FH_DTMinute],
+      f.fixhd[FH_DTSecond])
 
-print "Valid Time", f.fixhd[FH_VTYear], f.fixhd[FH_VTMonth], f.fixhd[FH_VTDay], \
-      f.fixhd[FH_VTHour], f.fixhd[FH_VTMinute], f.fixhd[FH_VTSecond]
+print("Valid Time", f.fixhd[FH_VTYear], f.fixhd[FH_VTMonth],
+      f.fixhd[FH_VTDay], f.fixhd[FH_VTHour], f.fixhd[FH_VTMinute],
+      f.fixhd[FH_VTSecond])
 
-s = raw_input('Enter year month day\n')
+s = input('Enter year month day\n')
 s = s.split()
 year = int(s[0])
 month = int(s[1])
 day = int(s[2])
 
-print "Using", year, month, day
+print("Using", year, month, day)
 
 f.fixhd[FH_DTYear] = f.fixhd[FH_VTYear] = year
 f.fixhd[FH_DTMonth] = f.fixhd[FH_VTMonth] = month
