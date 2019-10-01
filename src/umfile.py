@@ -464,7 +464,11 @@ def isprog(ilookup):
     # Also check whether variable is instantaneous, LBTIM < 10
     # No time processing  ilookup[LBPROC] == 0
     # Not a time series LBCODE < 30000
-    return ilookup[ITEM_CODE]//1000 in [0,33,34] and ilookup[LBTIM] < 10 and ilookup[LBPROC] == 0 and ilookup[LBCODE] < 30000
+    # Also 3100 - 3129 seem to be treated as prognostics
+    varcheck = ilookup[ITEM_CODE]//1000 in [0,33,34] or \
+               3100 <= ilookup[ITEM_CODE] <= 3129
+    timecheck = ilookup[LBTIM] < 10 and ilookup[LBPROC] == 0 and ilookup[LBCODE] < 30000
+    return varcheck and timecheck
 
 def istracer(ilookup):
     return  ilookup[ITEM_CODE]//1000 == 33 and ilookup[LBTIM] < 10 and ilookup[LBPROC] == 0 and ilookup[LBCODE] < 30000

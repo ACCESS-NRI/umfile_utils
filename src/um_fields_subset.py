@@ -58,17 +58,6 @@ if vlist and xlist:
 if prognostic and (vlist or xlist):
     raise Exception("Error: -p incompatible with explicit list of variables")
 
-def isprog(ilookup):
-    # Check whether a STASH code corresponds to a prognostic variable.
-    # Section 33 is tracers, 34 is UKCA
-    # Also check whether variable is instantaneous, LBTIM < 10
-    # No time processing  ilookup[LBPROC] == 0
-    # Not a time series LBCODE < 30000
-    return ilookup[ITEM_CODE]//1000 in [0,33,34] and ilookup[LBTIM] < 10 and ilookup[LBPROC] == 0 and ilookup[LBCODE] < 30000
-
-def istracer(ilookup):
-    return  ilookup[ITEM_CODE]//1000 == 33 and ilookup[LBTIM] < 10 and ilookup[LBPROC] == 0 and ilookup[LBCODE] < 30000
-
 def match(code,vlist,section):
     if section:
         return code//1000 in vlist
@@ -92,7 +81,7 @@ for k in range(f.fixhd[FH_LookupSize2]):
     if lbegin == -99 or k >= nfields:
         break
     # Format is Section Number * 1000 + item number
-    if ( prognostic and isprog(ilookup) or 
+    if ( prognostic and umfile.isprog(ilookup) or 
          vlist and match(ilookup[ITEM_CODE],vlist,section) or 
          xlist and not match(ilookup[ITEM_CODE],xlist,section) or 
          not prognostic and not vlist and not xlist ) :
@@ -118,7 +107,7 @@ for k in range(f.fixhd[FH_LookupSize2]):
         break
     # Format is Section Number * 1000 + item number
 
-    if ( prognostic and isprog(ilookup) or 
+    if ( prognostic and umfile.isprog(ilookup) or 
          vlist and match(ilookup[ITEM_CODE],vlist,section) or 
          xlist and not match(ilookup[ITEM_CODE],xlist,section) or 
          not prognostic and not vlist and not xlist ) :
@@ -130,9 +119,9 @@ for k in range(f.fixhd[FH_LookupSize2]):
         # data = f.readfld(k)
         # g.writefld(data, kout)
         kout += 1
-        if isprog(ilookup):
+        if umfile.isprog(ilookup):
             nprog += 1
-        if istracer(ilookup):
+        if umfile.istracer(ilookup):
             # Should this also count UKCA fields as tracers?
             ntracer += 1
 
