@@ -323,29 +323,35 @@ class UMFile():
 
         return data
 
-    def writefld(self, data, k, raw=False):
+    def writefld(self, data, k, raw=False, overwrite=False):
         # write the kth field
-        if k==0:
-            filepos =  self.fixhd[FH_DataStart] - 1
+        if overwrite:
+            filepos = self.ilookup[k,LBEGIN]
         else:
-            filepos = self.ilookup[k-1,LBEGIN] + self.ilookup[k-1,LBNREC]
-        self.ilookup[k,LBEGIN] = filepos
+            if k==0:
+                filepos =  self.fixhd[FH_DataStart] - 1
+            else:
+                filepos = self.ilookup[k-1,LBEGIN] + self.ilookup[k-1,LBNREC]
         self.wordseek(filepos)
 
-        # Need to set the output record size here
-        if self.fixhd[FH_Dataset] == 3:
-            # Fieldsfile, NADDR is relative to start of fixed length header
-            # (i.e. relative to start of file)
-            self.ilookup[k,NADDR] = filepos
-        else:
-            # Ancillary files behave like dumps?
-            # NADDR is relative to start of data. Note that this uses LBLREC
-            # so ignores the packing and the record padding. No relation to
-            # the actual disk address in LBEGIN.
-            if k == 0:
-                self.ilookup[k,NADDR] = 1
+        # If overwriting a field in an existing file don't change the header
+        if not overwrite:
+            self.ilookup[k,LBEGIN] = filepos
+
+            # Need to set the output record size here
+            if self.fixhd[FH_Dataset] == 3:
+                # Fieldsfile, NADDR is relative to start of fixed length header
+                # (i.e. relative to start of file)
+                self.ilookup[k,NADDR] = filepos
             else:
-                self.ilookup[k,NADDR] = self.ilookup[k-1,NADDR] + self.ilookup[k-1,LBLREC]
+                # Ancillary files behave like dumps?
+                # NADDR is relative to start of data. Note that this uses LBLREC
+                # so ignores the packing and the record padding. No relation to
+                # the actual disk address in LBEGIN.
+                if k == 0:
+                    self.ilookup[k,NADDR] = 1
+                else:
+                    self.ilookup[k,NADDR] = self.ilookup[k-1,NADDR] + self.ilookup[k-1,LBLREC]
 
 
         if raw:
@@ -383,14 +389,15 @@ class UMFile():
 
             self.arraywrite(packdata)
 
-        # Make the sector size a variable?
-        self.ilookup[k,LBLREC] = lblrec
-        if packing[1] == 2 and self.wordsize == 8:
-            size = (lblrec+1)/2
-        else:
-            size = lblrec
-        lbnrec = int(np.ceil(size/float(self.sectorsize))) * self.sectorsize
-        self.ilookup[k,LBNREC] = lbnrec
+        if not overwrite:
+            # Make the sector size a variable?
+            self.ilookup[k,LBLREC] = lblrec
+            if packing[1] == 2 and self.wordsize == 8:
+                size = (lblrec+1)/2
+            else:
+                size = lblrec
+            lbnrec = int(np.ceil(size/float(self.sectorsize))) * self.sectorsize
+            self.ilookup[k,LBNREC] = lbnrec
 
     def writelookup(self):
         # lookdim1 = self.fixhd[FH_LookupSize1]
