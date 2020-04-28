@@ -6,7 +6,7 @@
 # TODO
 # Should get the field names from rcf_headaddress_mod.F90
 
-from __future__ import print_function
+from __future__ import print_function, division
 import numpy as np
 import getopt, sys
 from um_fileheaders import *
@@ -44,6 +44,25 @@ if not f.fieldsfile:
 
 f.readheader()
 
+def getlevel(ilookup):
+    if ilookup[LBPLEV] != 0:
+        # Snow variables on tiles have this as 1000*tile_index + layer
+        # 1001, 2001, ... 1002, 2002, ...
+        # Model treats these as a single variable
+        # Reverse this to get something that increments
+        if ilookup[LBPLEV] > 1000:
+            lev = ilookup[LBPLEV] % 1000
+            tile = ilookup[LBPLEV] // 1000
+            return lev*1000 + tile
+        else:
+            return ilookup[LBPLEV]
+    else:
+        if ilookup[LBLEV] == 9999:
+            # Used for surface fields and 0th level of multi-level fields
+            return 0
+        else:
+            return ilookup[LBLEV]
+
 if not summary:
     f.print_fixhead()
     print("Integer constants", f.inthead)
@@ -57,6 +76,7 @@ if not summary:
 
 lastvar = None
 nl = 0
+nfld = 0
 if not header:
     
     for k in range(f.fixhd[FH_LookupSize2]):
@@ -72,15 +92,27 @@ if not header:
             if not lastvar:
                 # To get started
                 lastvar = ilookup[ITEM_CODE]
+                lastlevel = getlevel(ilookup)
                 nl = 1
             else:
-                if lastvar == ilookup[ITEM_CODE]:
+                # Just check that level increases to handle the tiled snow
+                # variables.
+                # Pressure levels should decrease
+                # Check that the times match,
+                if ( lastvar == ilookup[ITEM_CODE] and
+                     np.all(f.ilookup[k-1][:LBLREC] == ilookup[:LBLREC]) and
+                     ( getlevel(ilookup) > lastlevel or
+                       ilookup[LBVC] == 8 and getlevel(ilookup) < lastlevel)):
                     # Same variable as previous one
+                    lastlevel += 1
                     nl += 1
                 else:
                     var = stashvar.StashVar(lastvar,ilookup[MODEL_CODE])
-                    print(nl, lastvar, var.name, var.long_name)
+                    # nfld starts from 1 to match list in model output
+                    nfld += 1
+                    print(nfld, nl, lastvar, var.name, var.long_name)
                     lastvar = ilookup[ITEM_CODE]
+                    lastlevel = getlevel(ilookup)
                     nl = 1
         else:
             print(k, ilookup[ITEM_CODE], var.name, var.long_name)
