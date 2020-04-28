@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 #
-# A python script to convert the CMIP5 fields (atmospheric) from
+# A python script to convert the CMIP6 fields (atmospheric) from
 # UM fieldsfiles to netcdf format. This script works for all the
 # four types of fields (monthly, daily, 6-hourly, and 3-hourly).
 # For min, max fields, also need to match on cell_methods attribute
 # Assume these are "time0: min" and "time0: max".
 #
-# The input variable names are mapped to CMIP5 variable names before 
+# The input variable names are mapped to CMIP6 variable names before 
 # writing to netcdf files. Also, singleton dimensions are eliminated,
 # coordinate names are mapped to the commonly used names, and the time
 # dimension is written as 'unlimited'. This is helpful for creating 
@@ -21,11 +21,12 @@
 # Written by Martin Dix, Petteri Uotila, Harun Rashid and Peter Uhe.
 
 from __future__ import print_function
-import os, sys, argparse, datetime
+import os, sys, argparse, datetime, collections
 import numpy as np
 import cdms2, cdtime, netCDF4
 from cdms2 import MV
-
+import stashutils, stashvar_cmip6 as stashvar
+    
 parser = argparse.ArgumentParser(description="Convert UM fieldsfile to netCDF.")
 parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
 parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file')
@@ -37,25 +38,25 @@ parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                     default=False, help='verbose output')
 parser.add_argument('--nomask', dest='nomask', action='store_true', 
                     default=False, help="Don't apply Heaviside function mask to pressure level fields.\n Default is to apply masking if the Heaviside field is available in the input file.")
-parser.add_argument('--cmip6', dest='cmip6', action='store_true', 
-                    default=False, help="Use a CMIP6 version of the name mapping table.")
 parser.add_argument('--simple', dest='simple', action='store_true', 
                     default=False, help="Use a simple names of form fld_s01i123.")
-parser.add_argument('--nd_grid', dest='nd_grid', action='store_true', 
-                    default=False, help="Data on ND grid (affects dimension naming). Default is ENDGAME")
+# Using choices=('cm2', 'esm1.5') not available in python 2.7
+parser.add_argument('--model', dest='model', required=False, 
+                    default='cm2', help="Which model is being processed (affects dimension naming). Choices are cm2 (default) and esm1.5")
+parser.add_argument('-S', dest='STASHmaster', required=False, 
+                    default=None, help="Path to alternate STASHmaster file.")
 
 args = parser.parse_args()
+
+if args.model not in ('cm2', 'esm1.5'):
+    parser.print_help()
+    raise Exception("Invalid model choice %s" % args.model)
 
 mask = not args.nomask
 
 if args.verbose:
     print("Using python version: "+sys.version.split()[0])
 
-if args.cmip6:    
-    import stashvar_cmip6 as stashvar
-else:
-    import stashvar
-    
 def transform_dimensions(fi):
     # First work out which dimensions to exclude
     excludeDims=['nv']
@@ -66,13 +67,46 @@ def transform_dimensions(fi):
         # Keep time, longitude (zonal means) and single pressure levels
         # Negative level value used for 850 vorticity
         if dobj.shape==(1,) and not (dobj.isTime() or dobj.isLongitude()):
-            if not dobj.isLevel() or dobj.long_name.endswith('(dummy level coordinate)') or dobj.getData()[0] < 0.:
+            if not dobj.isLevel() or dobj.long_name.endswith('(dummy level coordinate)') or dobj.getData()[0] <= 0.:
                 excludeDims.append(dim)
     dimns = list(dims.difference(excludeDims)) # exclude those in excludeDims
     dimns.sort()
 
     print("Excluded dimensions", excludeDims)
     print("Remaining dimensions", dimns)
+
+    # Before using variables to work out dimension names, need to
+    # check that these are consistent.
+    level_codes = stashutils.get_level_codes(args.STASHmaster)
+    dimdict = collections.defaultdict(list)
+    for vname in fi.listvariables():
+        var = fi.variables[vname]
+        if hasattr(var,'stash_item'):
+            # Exclude dimension variables
+            for d in var.listdimnames():
+                if d in dimns:
+                    dimdict[d].append(vname)
+    for dname in dimdict:
+        if dname.startswith('z'):
+            vars = dimdict[dname]
+            # Do these all have the same level codes
+            for k, v in enumerate(vars):
+                var = fi.variables[v]
+                code = 1000*var.stash_section[0] + var.stash_item[0]
+                if k == 0:
+                    first = level_codes[code]
+                else:
+                    # Treatment of level first and last is a bit odd, so skip this
+                    # as well as grid
+                    if not ( level_codes[code][1] == first[1] and
+                             level_codes[code][4:] == first[4:] ):
+                        # ESM changes some variables from tiles to
+                        # PFTs so skip check in this case
+                        # Handled using dimension size below.
+                        if not (args.model=='esm1.5' and first.levelt==5 and first.pseudt==9):
+                            
+                            print("*** Mismatch", dname, vars, level_codes[code], first)
+                            raise Exception()
 
     renameDims = {}
     for dim in dimns:
@@ -87,18 +121,18 @@ def transform_dimensions(fi):
                 renamed = True
         # see if we need to rename output netcdf dimension name
         elif dobj.isLatitude():
-            # Work out the grid
-            if args.nd_grid:
-                # Assuming it's global here
+            # Work out the grid. ESM uses ND
+            # Assuming it's global here
+            if args.model == 'cm2':
                 if dval[0] == -90.:
-                    dimout = 'lat'
-                else:
                     dimout = 'lat_v'
+                else:
+                    dimout = 'lat'
             else:
                 if dval[0] == -90.:
-                    dimout = 'lat_v'
-                else:
                     dimout = 'lat'
+                else:
+                    dimout = 'lat_v'
             if dimout == 'lat':
                 long_name = 'latitudes at T grid points'
             elif dimout == 'lat_v':
@@ -106,35 +140,86 @@ def transform_dimensions(fi):
             renamed = True
         elif dobj.isLongitude():
             # Work out the grid
-            if args.nd_grid:
+            if args.model == 'cm2':
+                if dval[0] == 0.:
+                    dimout = 'lon_u'
+                else:
+                    dimout = 'lon'
+            else:
                 # Assuming it's global here
                 if dval[0] == 0.:
                     dimout = 'lon'
                 else:
                     dimout = 'lon_u'
-            else:
-                if dval[0] == 0.:
-                    dimout = 'lon_u'
-                else:
-                    dimout = 'lon'
             if dimout == 'lon':
                 long_name = 'longitudes at T grid points'
             elif dimout == 'lon_u':
                 long_name = 'longitudes at U grid points'
             renamed = True
-        elif dobj.isLevel():
-            if dim.endswith('p_level'):
-                dimout = 'z_p_level_%d' % len(dval)
-                renamed = True
-            elif dim.endswith('soil'):
+        elif dim.startswith('z'):
+            # Already checked that the dimensions are all used
+            # consistently, so can choose appropriate names from the
+            # level codes of the first variable that uses it
+            vname = dimdict[dim][0]
+            var = fi.variables[vname]
+            code = 1000*var.stash_section[0] + var.stash_item[0]
+            levelt = level_codes[code].levelt
+            nlev = len(dval)
+            if levelt == 1:
+                dimout = 'z_hybrid_height_rho'
+            elif levelt == 2:
+                dimout = 'z_hybrid_height_theta'
+            elif levelt == 3:
+                dimout = 'z_p_level_%d' % nlev
+            elif levelt == 5:
+                # Surface
+                pseudt = level_codes[code].pseudt
+                if pseudt == 1:
+                    dimout = 'z_sw_band'
+                    long_name = 'SW radiation spectral band'
+                elif pseudt == 2:
+                    dimout = 'z_lw_band'
+                    long_name = 'LW radiation spectral band'
+                elif pseudt == 4:
+                    dimout = 'z_aod_band'
+                    long_name = 'aerosol optical depth spectral band'
+                elif pseudt == 10:
+                    dimout = 'z_icecat'
+                    long_name = 'sea-ice category'
+                elif pseudt == 9:
+                    # Vegetation
+                    pseudl = level_codes[code].pseudl
+                    if args.model=='esm1.5':
+                        # Inconsistent, so use dim size
+                        if nlev==13:
+                            dimout = 'z_pft'
+                            long_name = 'land surface vegetated tile index'
+                        elif nlev==17:
+                            dimout = 'z_tile'
+                            long_name = 'land surface tile index'
+                        else:
+                            raise Exception("Unexpected dimension size for tile pseudo dimension %s" % nlev)
+                    else:
+                        if pseudl == 8:
+                            dimout = 'z_pft'
+                            long_name = 'land surface vegetated tile index'
+                        elif pseudl == 9:
+                            dimout = 'z_tile'
+                            long_name = 'land surface tile index'
+                else:
+                    raise Exception("Unexpected pseudt %d for var %d" % (pseudt, code))
+            elif levelt == 6:
                 dimout = 'z_soil_level'
-                renamed = True
+            else:
+                raise Exception('Unexpected level type %d' % levelt)
+            renamed = True
         if renamed:
             renameDims[dim] = (dimout, long_name)
         else:
             renameDims[dim] = (dim, long_name)
 
-    print("Renamed", renameDims)
+    if args.verbose:
+        print("Renamed dimensions", renameDims)
     return renameDims
 
 # a function to create dimensions in the netCDF file
@@ -142,6 +227,20 @@ def write_nc_dimension(dimension,renameDims,fi,fo):
     dobj = fi.dimensionobject(dimension)
     dval = dobj.getData()
     dimout = renameDims[dimension][0]
+    # There may be several input dimensions that map to same output
+    # dimension. Check that the values match in this case
+    if dimout in fo.dimensions:
+        if not np.allclose(dval, fo.variables[dimout][:]):
+            print("Dimension %s renamed as %s already in use" % (dimension, dimout))
+            print("Coordinate mismatch")
+            print(dval)
+            print(fo.variables[dimout][:])
+            raise Exception()
+        else:
+            if args.verbose:
+                print("Dimension %s renamed as %s already in use" % (dimension, dimout))
+            return
+    
     if dobj.isTime():
         dimlen = None
     else:
@@ -158,7 +257,15 @@ def write_nc_dimension(dimension,renameDims,fi,fo):
     long_name = renameDims[dimension][1]
     if long_name:
         fo.variables[dimout].long_name = long_name
-    fo.variables[dimout][:] = dval
+    if dimout == 'z_soil_level':
+        fo.variables[dimout].units = "m"
+        # CDMS gets this wrong
+        fo.variables[dimout].positive = "down"
+    if fo.variables[dimout].units == "Pa":
+        # CDMS gives values with extra 1e-8 for some reason.
+        fo.variables[dimout][:] = np.round(dval,6)
+    else:
+        fo.variables[dimout][:] = dval
 
 def findvar(vars, section, item):
     for v in vars.values():
@@ -251,7 +358,7 @@ ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT',
              3:'NETCDF4', 4:'NETCDF4_CLASSIC'}
 fo = netCDF4.Dataset(args.ofile,'w',format=ncformats[args.nckind])
 
-history = "%s converted to netCDF by %s on %s." % (os.path.abspath(args.ifile), os.getenv('USER'),datetime.datetime.now().strftime("%Y-%m-%d"))
+history = "%s converted with um2netcdf4.py by %s on %s." % (os.path.abspath(args.ifile), os.getenv('USER'),datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 # global attributes
 for attribute in fi.attributes:
