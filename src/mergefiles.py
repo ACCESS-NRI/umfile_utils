@@ -15,14 +15,10 @@ import umfile
 from um_fileheaders import *
 import argparse
 
-def usage():
-    print "Usage: mergefiles.py file1 file2 outputfile"
-    sys.exit(2)
-
 parser = argparse.ArgumentParser(description='Merge UM files')
 
 parser.add_argument('-d', '--default', dest='duplicate', type=int, default=1,
-                    help='default file for duplicate fields')
+                    help='default file for duplicate fields (1 or 2)')
 
 parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', 
                     default=False, help='verbose output')
@@ -40,8 +36,8 @@ f2 = umfile.UMFile(args.file2)
 g = umfile.UMFile(args.file3, "w")
 g.copyheader(f1)
 
-print "Lookup sizes", f1.fixhd[FH_LookupSize2], f1.fixhd[FH_LookupSize1], \
-    f2.fixhd[FH_LookupSize2], f2.fixhd[FH_LookupSize1]
+print("Lookup sizes", f1.fixhd[FH_LookupSize2], f1.fixhd[FH_LookupSize1],
+    f2.fixhd[FH_LookupSize2], f2.fixhd[FH_LookupSize1])
 
 g.ilookup[:] = -99 # Used as missing value
 
@@ -70,7 +66,7 @@ end2 = False
 
 while True:
     if args.verbose:
-        print "K", k1, k2, kout
+        print("K", k1, k2, kout)
     if k1 >= f1.fixhd[FH_LookupSize2] or f1.ilookup[k1][LBEGIN]==-99:
         end1 = True
     if k2 >= f2.fixhd[FH_LookupSize2] or f2.ilookup[k2][LBEGIN]==-99:
@@ -89,11 +85,11 @@ while True:
     else:        
         if f1.ilookup[k1][ITEM_CODE] == f2.ilookup[k2][ITEM_CODE]:
             if args.duplicate == 1:
-                print "Warning - duplicate (using file1 version)", f1.ilookup[k1][ITEM_CODE]
+                print("Warning - duplicate (using file1 version)", f1.ilookup[k1][ITEM_CODE])
                 f = f1
                 k = k1
             else:
-                print "Warning - duplicate (using file1 version)", f1.ilookup[k1][ITEM_CODE]
+                print("Warning - duplicate (using file2 version)", f1.ilookup[k1][ITEM_CODE])
                 f = f2
                 k = k2
             k1 += 1

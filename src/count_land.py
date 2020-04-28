@@ -4,6 +4,7 @@
 # Program expects that the mask is the first field.
 # Martin Dix martin.dix@csiro.au
 
+from __future__ import print_function
 import numpy as np
 import getopt, sys
 import umfile
@@ -16,7 +17,7 @@ try:
         if opt[0] == '-v':
             verbose = True
 except getopt.error:
-    print "Usage: count_land [-v] file"
+    print("Usage: count_land [-v] file")
     sys.exit(2)
 
 ifile = args[0]
@@ -41,13 +42,13 @@ nrows = ilookup[LBROW]
 # Check field name and data type.
 # Expecting stash code 1 0 30 LAND MASK
 if ilookup[ITEM_CODE] != 30:
-    print "Variable is not land mask, stashcode is", ilookup[ITEM_CODE]
+    print("Variable is not land mask, stashcode is", ilookup[ITEM_CODE])
     sys.exit(1)
 if ilookup[DATA_TYPE] != 3:
-    print "Variable is not expected logical type, code is", ilookup[DATA_TYPE]
+    print("Variable is not expected logical type, code is", ilookup[DATA_TYPE])
     sys.exit(1)
 
 data = f.readfld(0)
 
 # Mask may be +-1 depending on compiler used in ancillary program.
-print (data != 0).sum()
+print((data != 0).sum())
