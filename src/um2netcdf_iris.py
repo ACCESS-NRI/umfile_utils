@@ -1,11 +1,7 @@
-from __future__ import print_function
 import iris, numpy as np, datetime, sys, re
 import stashvar
 from iris.coords import CellMethod
 import cf_units, cftime
-
-if iris.__version__ < '2.0.0':
-    iris.FUTURE.netcdf_no_unlimited = True
 
 def convert_proleptic(time):
     # Convert from hour to days and shift origin from 1970 to 0001
@@ -17,12 +13,14 @@ def convert_proleptic(time):
         date = time.units.num2date(tvals[i])
         newdate = cftime.DatetimeProlepticGregorian(date.year, date.month, date.day, date.hour, date.minute, date.second)
         tvals[i] = newunits.date2num(newdate)
-        for j in range(2):
-            date = time.units.num2date(tbnds[i][j])
-            newdate = cftime.DatetimeProlepticGregorian(date.year, date.month, date.day, date.hour, date.minute, date.second)
-            tbnds[i][j] = newunits.date2num(newdate)
+        if tbnds: # Fields with instantaneous data don't have bounds
+            for j in range(2):
+                date = time.units.num2date(tbnds[i][j])
+                newdate = cftime.DatetimeProlepticGregorian(date.year, date.month, date.day, date.hour, date.minute, date.second)
+                tbnds[i][j] = newunits.date2num(newdate)
     time.points = tvals
-    time.bounds = tbnds
+    if tbnds:
+        time.bounds = tbnds
     time.units = newunits
 
 def cubewrite(cube,sman,compression,use64bit):
