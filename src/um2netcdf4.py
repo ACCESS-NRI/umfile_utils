@@ -89,14 +89,18 @@ def write_nc_dimension(dimension,fi,fo):
     # see if we need to rename output netcdf dimension name
     if dobj.isLatitude():
         # Work out the grid
-        if dval[0] == -90.:
+        if len(dval) == 180:
+            dimout = 'lat_river'
+        elif dval[0] == -90.:
             dimout = 'lat_v'
         else:
             dimout = 'lat'
         renamed = True
     if dobj.isLongitude():
         # Work out the grid
-        if dval[0] == 0.:
+        if len(dval) == 360:
+            dimout = 'lon_river'
+        elif dval[0] == 0.:
             dimout = 'lon_u'
         else:
             dimout = 'lon'
@@ -108,6 +112,8 @@ def write_nc_dimension(dimension,fi,fo):
         elif dimension.endswith('soil'):
             dimout = 'z_soil_level'
             renamed = True
+    if args.verbose:
+        print("Creating dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen))
     fo.createDimension(dimout,dimlen)
     if hasattr(dobj,'standard_name') and dobj.standard_name == 'time':
         fo.createVariable(dimout,'d',(dimout,))
@@ -127,8 +133,6 @@ def write_nc_dimension(dimension,fi,fo):
     # update dimension mapping
     if dimension in renameDims or renamed:
         renameDims[dimension] = dimout
-    if args.verbose:
-        print("Wrote dimension %s as %s, dimlen: %s" % (dimension,dimout,dimlen))
 
 def findvar(vars, section, item):
     for v in vars.values():
