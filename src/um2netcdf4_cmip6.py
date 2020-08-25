@@ -63,14 +63,18 @@ def process(ifile, ofile, args):
         # see if we need to rename output netcdf dimension name
         if dobj.isLatitude():
             # Work out the grid
-            if dval[0] == -90.:
+            if len(dval) == 180:
+                dimout = 'lat_river'
+            elif dval[0] == -90.:
                 dimout = 'lat_v'
             else:
                 dimout = 'lat'
             renamed = True
         if dobj.isLongitude():
             # Work out the grid
-            if dval[0] == 0.:
+            if len(dval) == 360:
+                dimout = 'lon_river'
+            elif dval[0] == 0.:
                 dimout = 'lon_u'
             else:
                 dimout = 'lon'
