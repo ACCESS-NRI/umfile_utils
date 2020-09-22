@@ -1,5 +1,5 @@
-import iris, numpy as np, datetime, sys, re
-import stashvar
+import iris, numpy as np, datetime, sys
+import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
 import cf_units, cftime
 
@@ -85,9 +85,9 @@ def fix_cell_methods(mtuple):
         newm.append(n)
     return tuple(newm)
 
-def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,include_list=None,exclude_list=None,use64bit=False,nohist=False):
+def process(infile, outfile, args):
 
-    if include_list and exclude_list:
+    if args.include_list and args.exclude_list:
         raise Exception("Error: include list and exclude list are mutually exclusive")
     cubes = iris.load(infile)
 
@@ -106,46 +106,48 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
         stashcode = c.attributes['STASH']
         if ( stashcode.section == 30 and
            ( 201 <= stashcode.item <= 288  or 302 <= stashcode.item <= 303 )):
-
             need_heaviside_uv = True
         if stashcode.section == 30 and stashcode.item == 301:
             have_heaviside_uv = True
             heaviside_uv = c
         if ( stashcode.section == 30 and 293 <= stashcode.item <= 298):
-
             need_heaviside_t = True
         if stashcode.section == 30 and stashcode.item == 304:
             have_heaviside_t = True
             heaviside_t = c
 
-    if not nomask and need_heaviside_uv and not have_heaviside_uv:
+    if not args.nomask and need_heaviside_uv and not have_heaviside_uv:
         print("""Warning - heaviside_uv field needed for masking pressure level data is not present.
     These fields will be skipped""")
-    if not nomask and need_heaviside_t and not have_heaviside_t:
+    if not args.nomask and need_heaviside_t and not have_heaviside_t:
         print("""Warning - heaviside_t field needed for masking pressure level data is not present.
     These fields will be skipped""")
 
     nc_formats = {1: 'NETCDF3_CLASSIC', 2: 'NETCDF3_64BIT', 
                   3: 'NETCDF4', 4: 'NETCDF4_CLASSIC'}
-    with iris.fileformats.netcdf.Saver(outfile, nc_formats[nckind]) as sman:
+    with iris.fileformats.netcdf.Saver(outfile, nc_formats[args.nckind]) as sman:
 
         # Add global attributes
-        if not nohist:
-            history = "File %s with converted with um2netcdf_iris.py at %s" % (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        if not args.nohist:
+            history = "File %s with converted with um2netcdf_iris.py at %s" % \
+                      (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
 
         for c in cubes:
             stashcode = c.attributes['STASH']
             itemcode = 1000*stashcode.section + stashcode.item
-            if include_list and itemcode not in include_list:
+            if args.include_list and itemcode not in args.include_list:
                 continue
-            if exclude_list and itemcode in exclude_list:
+            if args.exclude_list and itemcode in args.exclude_list:
                 continue
             umvar = stashvar.StashVar(itemcode)
-            if umvar.uniquename:
+            if args.simple:
+                c.var_name = 'fld_s%2.2di%3.3d' % (stashcode.section, stashcode.item)
+            elif umvar.uniquename:
                 c.var_name = umvar.uniquename
-                # Could there be cases with both max and min?
+            # Could there be cases with both max and min?
+            if c.var_name:
                 if any([m.method == 'maximum' for m in c.cell_methods]):
                     c.var_name += "_max"
                 if any([m.method == 'minimum' for m in c.cell_methods]):
@@ -157,17 +159,19 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
                 c.standard_name = 'northward_wind'
             if c.standard_name and umvar.standard_name:
                 if c.standard_name != umvar.standard_name:
-                    if verbose:
-                        sys.stderr.write("Standard name mismatch %d %d %s %s\n" % (stashcode.section, stashcode.item, c.standard_name, umvar.standard_name) )
+                    if args.verbose:
+                        sys.stderr.write("Standard name mismatch %d %d %s %s\n" % \
+                           (stashcode.section, stashcode.item, c.standard_name, umvar.standard_name) )
                     c.standard_name = umvar.standard_name
             if c.units and umvar.units:
                 # Simple testing c.units == umvar.units doesn't
-                # catch format differences becuase Unit type
+                # catch format differences because Unit type
                 # works around them. repr isn't reliable either
                 ustr = '%s' % c.units
                 if ustr != umvar.units:
-                    if verbose:
-                        sys.stderr.write("Units mismatch %d %d %s %s\n" % (stashcode.section, stashcode.item, c.units, umvar.units) )
+                    if args.verbose:
+                        sys.stderr.write("Units mismatch %d %d %s %s\n" % \
+                             (stashcode.section, stashcode.item, c.units, umvar.units) )
                     c.units = umvar.units
             # Temporary work around for xconv
             if c.long_name and len(c.long_name) > 110:
@@ -188,7 +192,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
             if stashcode.section == 30 and stashcode.item in (301,304):
                 # Skip the mask fields themselves
                 continue
-            if not nomask and stashcode.section == 30 and \
+            if not args.nomask and stashcode.section == 30 and \
              (201 <= stashcode.item <= 288  or 302 <= stashcode.item <= 303):
                 # Pressure level data should be masked
                 if have_heaviside_uv:
@@ -197,7 +201,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
                         c.data = np.ma.masked_array(c.data/heaviside_uv.data, heaviside_uv.data <= hcrit).astype(np.float32)
                 else:
                     continue
-            if not nomask and stashcode.section == 30 and \
+            if not args.nomask and stashcode.section == 30 and \
              (293 <= stashcode.item <= 298):
                 # Pressure level data should be masked
                 if have_heaviside_t:
@@ -206,14 +210,14 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
                         c.data = np.ma.masked_array(c.data/heaviside_t.data, heaviside_t.data <= hcrit).astype(np.float32)
                 else:
                     continue
-            if verbose:
+            if args.verbose:
                 print(c.name(), itemcode)
-            cubewrite(c,sman,compression,use64bit)
+            cubewrite(c,sman,args.compression,args.use64bit)
 
 if __name__ == '__main__':
     import sys, argparse
     parser = argparse.ArgumentParser(description="Convert UM fieldsfile to netcdf")
-    parser.add_argument('-k', dest='kind', required=False, type=int,
+    parser.add_argument('-k', dest='nckind', required=False, type=int,
                         default=3, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 3', choices=[1,2,3,4])
     parser.add_argument('-c', dest='compression', required=False, type=int,
                         default=4, help='compression level (0=none, 9=max). Default 4')
@@ -221,17 +225,19 @@ if __name__ == '__main__':
                     default=False, help='Use 64 bit netcdf for 64 bit input')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', 
                     default=False, help='verbose output')
-    parser.add_argument('--include', dest='include', type=int,
+    parser.add_argument('--include', dest='include_list', type=int,
                         nargs = '+', help = 'List of stash codes to include')
-    parser.add_argument('--exclude', dest='exclude', type=int,
+    parser.add_argument('--exclude', dest='exclude_list', type=int,
                         nargs = '+', help = 'List of stash codes to exclude')
     parser.add_argument('--nomask', dest='nomask', action='store_true', 
                     default=False, help="Don't apply heaviside function mask to pressure level fields")
     parser.add_argument('--nohist', dest='nohist', action='store_true', 
                     default=False, help="Don't update history attribute")
+    parser.add_argument('--simple', dest='simple', action='store_true', 
+                    default=False, help="Use a simple names of form fld_s01i123.")
     parser.add_argument('infile', nargs='?', help='Input file')
     parser.add_argument('outfile', nargs='?', help='Output file')
 
     args = parser.parse_args()
 
-    process(args.infile,args.outfile,args.verbose,args.kind,args.compression,args.nomask,args.include,args.exclude,args.use64bit,args.nohist)
+    process(args.infile, args.outfile, args)
