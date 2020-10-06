@@ -8,35 +8,24 @@
 
 from __future__ import print_function, division
 import numpy as np
-import getopt, sys
+import argparse, sys
 from um_fileheaders import *
 import umfile, stashvar
 
-short = False
-header = False
-summary = False
-try:
-    optlist, args = getopt.getopt(sys.argv[1:], 'i:hsS')
-    for opt in optlist:
-        if opt[0] == '-i':
-            ifile = opt[1]
-        elif opt[0] == '-h':
-            header = True
-        elif opt[0] == '-s':
-            short = True
-        elif opt[0] == '-S':
-            summary = True
-except getopt.error:
-    print("Usage: um_fieldsfile_dump [-s] [-h] -i ifile ")
-    print(" -s for a short list of fields")
-    print(" -S for a summary similar to model list of expected fields")
-    print("-h for header only")
-    sys.exit(2)
+parser = argparse.ArgumentParser(description="Dump contents of a UM fieldsfile")
+parser.add_argument('-H', dest='header_only', action='store_true', 
+                default=False, help='show header only')
+parser.add_argument('--noheader', dest='noheader', action='store_true', 
+                default=False, help="Don't show file header")
+parser.add_argument('-s', dest='short', action='store_true', 
+                default=False, help='short list of fields')
+parser.add_argument('-S', dest='summary', action='store_true', 
+                default=False, help='summary similar to model list of expected fields')
+parser.add_argument('infile', nargs='?', help='Input file')
 
-if args:
-    ifile = args[0]
+args = parser.parse_args()
     
-f = umfile.UMFile(ifile)
+f = umfile.UMFile(args.infile)
 
 if not f.fieldsfile:
     print("Not a UM fieldsfile")
@@ -63,7 +52,7 @@ def getlevel(ilookup):
         else:
             return ilookup[LBLEV]
 
-if not summary:
+if not (args.summary or args.noheader):
     f.print_fixhead()
     print("Integer constants", f.inthead)
     print("REAL HEADER", f.realhead)
@@ -77,7 +66,7 @@ if not summary:
 lastvar = None
 nl = 0
 nfld = 0
-if not header:
+if not args.header_only:
     
     for k in range(f.fixhd[FH_LookupSize2]):
         ilookup = f.ilookup[k]
@@ -86,9 +75,9 @@ if not header:
         if lbegin == -99:
             break
         var = stashvar.StashVar(ilookup[ITEM_CODE],ilookup[MODEL_CODE])
-        if not (short or summary):
+        if not (args.short or args.summary):
             print("-------------------------------------------------------------")
-        if summary:
+        if args.summary:
             if not lastvar:
                 # To get started
                 lastvar = ilookup[ITEM_CODE]
@@ -122,7 +111,7 @@ if not header:
             # of the rest of the data missing
             print("Header data missing")
             continue
-        if summary or short:
+        if args.summary or args.short:
             continue
         print(f.ilookup[k, :45])
         print(f.rlookup[k, 45:])
@@ -143,6 +132,9 @@ if not header:
         except umfile.packerr:
             print("Can't handle packed data")
 
-if summary:
-    # There's one left at the end
-    print(nl, lastvar, var.name, var.long_name)
+if args.summary:
+    if lastvar:
+        # There's one left at the end
+        print(nfld+1, nl, lastvar, var.name, var.long_name)
+    else:
+        print("No data fields present")
