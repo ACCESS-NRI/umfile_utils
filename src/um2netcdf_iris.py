@@ -3,6 +3,8 @@ import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
 import cf_units, cftime
 
+fill_value = 1.e20
+
 def convert_proleptic(time):
     # Convert from hour to days and shift origin from 1970 to 0001
     newunits = cf_units.Unit("days since 0001-01-01 00:00", calendar='proleptic_gregorian')
@@ -23,14 +25,30 @@ def convert_proleptic(time):
         time.bounds = tbnds
     time.units = newunits
 
+def add_bounds(cube):
+    def _add_coord_bounds(coord):
+        if len(coord.points) > 1:
+            if not coord.has_bounds():
+                coord.guess_bounds()
+        else:
+            # For length 1, assume it's global. guess_bounds doesn't work in this case
+            if coord.name() == 'latitude':
+                if not coord.has_bounds():
+                    coord.bounds = np.array([[-90.,90.]])
+            elif coord.name() == 'longitude':
+                if not coord.has_bounds():
+                    coord.bounds = np.array([[0.,360.]])
+
+    _add_coord_bounds(cube.coord('latitude'))
+    _add_coord_bounds(cube.coord('longitude'))
+
 def cubewrite(cube,sman,compression,use64bit):
     try:
         plevs = cube.coord('pressure')
         if plevs.points[0] < plevs.points[-1]:
             # Flip (assuming pressure is first index)
             plevs.attributes['positive'] = 'down'
-            # Otherwise they're off by 1e-10 which looks odd in
-            # ncdump
+            # Otherwise they're off by 1e-10 which looks odd in ncdump
             plevs.points = np.round(plevs.points,5)
             if cube.coord_dims('pressure') == (0,):
                 cube = cube[::-1]
@@ -38,6 +56,11 @@ def cubewrite(cube,sman,compression,use64bit):
         pass
     if cube.data.dtype == 'float64' and not use64bit:
         cube.data = cube.data.astype(np.float32)
+    
+    # Set the missing_value attribute. Use an array to force the type to match
+    # the data type
+    cube.attributes['missing_value'] = np.array([fill_value], cube.data.dtype)
+    add_bounds(cube)
 
     # If reference date is before 1600 use proleptic gregorian
     # calendar and change units from hours to days
@@ -64,13 +87,13 @@ def cubewrite(cube,sman,compression,use64bit):
 
     try:
         if cube.coord_dims('time'):
-            sman.write(cube, zlib=True, complevel=compression, unlimited_dimensions=['time'])
+            sman.write(cube, zlib=True, complevel=compression, unlimited_dimensions=['time'], fill_value=fill_value)
         else:
             tmp = iris.util.new_axis(cube,cube.coord('time'))
-            sman.write(tmp, zlib=True, complevel=compression, unlimited_dimensions=['time'])
+            sman.write(tmp, zlib=True, complevel=compression, unlimited_dimensions=['time'], fill_value=fill_value)
     except iris.exceptions.CoordinateNotFoundError:
         # No time dimension (probably ancillary file)
-        sman.write(cube, zlib=True, complevel=compression)
+        sman.write(cube, zlib=True, complevel=compression, fill_value=fill_value)
 
 def fix_cell_methods(mtuple):
     # Input is tuple of cell methods
@@ -101,7 +124,6 @@ def process(infile, outfile, args):
     # should check whether these are time means
     need_heaviside_uv = need_heaviside_t = False
     have_heaviside_uv = have_heaviside_t = False
-    hcrit = 0.5
     for c in cubes:
         stashcode = c.attributes['STASH']
         if ( stashcode.section == 30 and
@@ -198,7 +220,7 @@ def process(infile, outfile, args):
                 if have_heaviside_uv:
                     # Temporarily turn off warnings from 0/0
                     with np.errstate(divide='ignore',invalid='ignore'):               
-                        c.data = np.ma.masked_array(c.data/heaviside_uv.data, heaviside_uv.data <= hcrit).astype(np.float32)
+                        c.data = np.ma.masked_array(c.data/heaviside_uv.data, heaviside_uv.data <= args.hcrit).astype(np.float32)
                 else:
                     continue
             if not args.nomask and stashcode.section == 30 and \
@@ -207,7 +229,7 @@ def process(infile, outfile, args):
                 if have_heaviside_t:
                     # Temporarily turn off warnings from 0/0
                     with np.errstate(divide='ignore',invalid='ignore'):               
-                        c.data = np.ma.masked_array(c.data/heaviside_t.data, heaviside_t.data <= hcrit).astype(np.float32)
+                        c.data = np.ma.masked_array(c.data/heaviside_t.data, heaviside_t.data <= args.hcrit).astype(np.float32)
                 else:
                     continue
             if args.verbose:
@@ -235,6 +257,8 @@ if __name__ == '__main__':
                     default=False, help="Don't update history attribute")
     parser.add_argument('--simple', dest='simple', action='store_true', 
                     default=False, help="Use a simple names of form fld_s01i123.")
+    parser.add_argument('--hcrit', dest='hcrit', type=float, 
+                    default=0.5, help="Critical value of heavyside fn for pressure level masking (default=0.5)")
     parser.add_argument('infile', nargs='?', help='Input file')
     parser.add_argument('outfile', nargs='?', help='Output file')
 
