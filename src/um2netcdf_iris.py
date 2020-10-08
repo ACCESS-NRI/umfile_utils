@@ -1,7 +1,7 @@
 import iris, numpy as np, datetime, sys
 import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
-import cf_units, cftime
+import cf_units, cftime, mule
 
 fill_value = 1.e20
 
@@ -25,7 +25,7 @@ def convert_proleptic(time):
         time.bounds = tbnds
     time.units = newunits
 
-def add_bounds(cube):
+def fix_latlon_coord(cube, grid_type, dlat, dlon):
     def _add_coord_bounds(coord):
         if len(coord.points) > 1:
             if not coord.has_bounds():
@@ -41,6 +41,46 @@ def add_bounds(cube):
 
     _add_coord_bounds(cube.coord('latitude'))
     _add_coord_bounds(cube.coord('longitude'))
+
+    lat = cube.coord('latitude')
+    if len(lat.points) == 180:
+        lat.var_name = 'lat_river'
+    elif (lat.points[0] == -90 and grid_type == 'EG') or \
+         (np.allclose(-90.+0.5*dlat, lat.points[0]) and grid_type == 'ND'):
+        lat.var_name = 'lat_v'
+    else:
+        lat.var_name = 'lat'
+
+    lon = cube.coord('longitude')
+    if len(lon.points) == 360:
+        lon.var_name = 'lon_river'
+    elif (lon.points[0] == 0 and grid_type == 'EG') or \
+         (np.allclose(0.5*dlon, lon.points[0]) and grid_type == 'ND'):
+        lon.var_name = 'lon_u'
+    else:
+        lon.var_name = 'lon'
+
+def fix_level_coord(cube, z_rho, z_theta):
+    # Rename model_level_number coordinates to better distinguish rho and theta levels
+    try:
+        c_lev = cube.coord('model_level_number')
+        c_height = cube.coord('level_height')
+        c_sigma = cube.coord('sigma')
+    except iris.exceptions.CoordinateNotFoundError:
+        c_lev = None
+    if c_lev:
+        d_rho = abs(c_height.points[0]-z_rho)
+        if d_rho.min() < 1e-6:
+            c_lev.var_name = 'model_rho_level_number'
+            c_height.var_name = 'rho_level_height'
+            c_sigma.var_name = 'sigma_rho'
+        else:
+            d_theta = abs(c_height.points[0]-z_theta)
+            if d_theta.min() < 1e-6:
+                c_lev.var_name = 'model_theta_level_number'
+                c_height.var_name = 'theta_level_height'
+                c_sigma.var_name = 'sigma_theta'
+
 
 def cubewrite(cube,sman,compression,use64bit):
     try:
@@ -60,7 +100,6 @@ def cubewrite(cube,sman,compression,use64bit):
     # Set the missing_value attribute. Use an array to force the type to match
     # the data type
     cube.attributes['missing_value'] = np.array([fill_value], cube.data.dtype)
-    add_bounds(cube)
 
     # If reference date is before 1600 use proleptic gregorian
     # calendar and change units from hours to days
@@ -109,6 +148,20 @@ def fix_cell_methods(mtuple):
     return tuple(newm)
 
 def process(infile, outfile, args):
+
+    # Use mule to get the model levels to help with dimension naming
+    ff = mule.FieldsFile.from_file(infile)
+    if ff.fixed_length_header.grid_staggering == 6:
+        grid_type = 'EG'
+    elif ff.fixed_length_header.grid_staggering == 3:
+        grid_type = 'ND'
+    else:
+        raise Exception("Unable to determine grid staggering from header %d" % 
+                        ff.fixed_length_header.grid_staggering)
+    dlat = ff.real_constants.row_spacing
+    dlon = ff.real_constants.col_spacing
+    z_rho = ff.level_dependent_constants.zsea_at_rho
+    z_theta = ff.level_dependent_constants.zsea_at_theta
 
     if args.include_list and args.exclude_list:
         raise Exception("Error: include list and exclude list are mutually exclusive")
@@ -207,9 +260,10 @@ def process(infile, outfile, args):
                 if umvar.long_name:
                     c.long_name = umvar.long_name
 
-            # Interval in cell methods isn't reliable so better to
-            # remove it.
+            # Interval in cell methods isn't reliable so better to remove it.
             c.cell_methods = fix_cell_methods(c.cell_methods)
+            fix_latlon_coord(c, grid_type, dlat, dlon)
+            fix_level_coord(c, z_rho, z_theta)
 
             if stashcode.section == 30 and stashcode.item in (301,304):
                 # Skip the mask fields themselves
