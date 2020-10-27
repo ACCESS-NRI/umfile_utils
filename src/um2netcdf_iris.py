@@ -2,8 +2,7 @@ import iris, numpy as np, datetime, sys
 import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
 import cf_units, cftime, mule
-
-fill_value = 1.e20
+from netCDF4 import default_fillvals
 
 def convert_proleptic(time):
     # Convert from hour to days and shift origin from 1970 to 0001
@@ -98,11 +97,20 @@ def cubewrite(cube,sman,compression,use64bit):
                 cube = cube[::-1]
     except iris.exceptions.CoordinateNotFoundError:
         pass
-    if cube.data.dtype == 'float64' and not use64bit:
-        cube.data = cube.data.astype(np.float32)
+    if not use64bit:
+        if cube.data.dtype == 'float64':
+            cube.data = cube.data.astype(np.float32)
+        elif cube.data.dtype == 'int64':
+            cube.data = cube.data.astype(np.int32)
     
     # Set the missing_value attribute. Use an array to force the type to match
     # the data type
+    if cube.data.dtype.kind == 'f':
+        fill_value = 1.e20
+    else:
+        # Use netCDF defaults
+        fill_value = default_fillvals['%s%1d' % (cube.data.dtype.kind, cube.data.dtype.itemsize)]
+
     cube.attributes['missing_value'] = np.array([fill_value], cube.data.dtype)
 
     # If reference date is before 1600 use proleptic gregorian
