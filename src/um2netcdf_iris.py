@@ -125,7 +125,8 @@ def cubewrite(cube,sman,compression,use64bit):
         else:
             time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
             time.points = time.points/24.
-            time.bounds = time.bounds/24.
+            if time.bounds is not None:
+                time.bounds = time.bounds/24.
         cube.remove_coord('forecast_period')
         cube.remove_coord('forecast_reference_time')
 
