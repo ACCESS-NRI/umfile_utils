@@ -42,8 +42,13 @@ def fix_latlon_coord(cube, grid_type, dlat, dlon):
                 if not coord.has_bounds():
                     coord.bounds = np.array([[0.,360.]])
 
-    _add_coord_bounds(cube.coord('latitude'))
-    _add_coord_bounds(cube.coord('longitude'))
+    lat = cube.coord('latitude')
+    # Force to double for consistency with CMOR
+    lat.points = lat.points.astype(np.float64)
+    _add_coord_bounds(lat)
+    lon = cube.coord('longitude')
+    lon.points = lon.points.astype(np.float64)
+    _add_coord_bounds(lon)
 
     lat = cube.coord('latitude')
     if len(lat.points) == 180:
