@@ -165,6 +165,31 @@ def fix_cell_methods(mtuple):
         newm.append(n)
     return tuple(newm)
 
+def apply_mask(c, heaviside, hcrit):
+    # Function must handle case where the cube is defined on only a subset of the levels of the heaviside function
+    print("Apply mask", c.shape, heaviside.shape)
+    if c.shape == heaviside.shape:
+        # If the shapes match it's simple
+        # Temporarily turn off warnings from 0/0
+        with np.errstate(divide='ignore',invalid='ignore'):
+            c.data = np.ma.masked_array(c.data/heaviside.data, heaviside.data <= hcrit).astype(np.float32)
+    else:
+        # Are the levels of c a subset of the levels of the heaviside variable?
+        c_p = c.coord('pressure')
+        h_p = heaviside.coord('pressure')
+        print('Levels for masking', c_p.points, h_p.points)
+        if set(c_p.points).issubset(h_p.points):
+            # Match is possible
+            constraint = iris.Constraint(pressure=c_p.points)
+            h_tmp = heaviside.extract(constraint)
+            # Double check they're aactually the same after extraction
+            if not np.all(c_p.points == h_tmp.coord('pressure').points):
+                raise Exception('Unexpected mismatch in levels of extracted heaviside function')
+            with np.errstate(divide='ignore',invalid='ignore'):
+                c.data = np.ma.masked_array(c.data/h_tmp.data, h_tmp.data <= hcrit).astype(np.float32)
+        else:
+            raise Exception('Unable to match levels of heaviside function to variable')
+
 def process(infile, outfile, args):
 
     # Use mule to get the model levels to help with dimension naming
@@ -290,18 +315,14 @@ def process(infile, outfile, args):
              (201 <= stashcode.item <= 288  or 302 <= stashcode.item <= 303):
                 # Pressure level data should be masked
                 if have_heaviside_uv:
-                    # Temporarily turn off warnings from 0/0
-                    with np.errstate(divide='ignore',invalid='ignore'):               
-                        c.data = np.ma.masked_array(c.data/heaviside_uv.data, heaviside_uv.data <= args.hcrit).astype(np.float32)
+                    apply_mask(c, heaviside_uv, args.hcrit)
                 else:
                     continue
             if not args.nomask and stashcode.section == 30 and \
              (293 <= stashcode.item <= 298):
                 # Pressure level data should be masked
                 if have_heaviside_t:
-                    # Temporarily turn off warnings from 0/0
-                    with np.errstate(divide='ignore',invalid='ignore'):               
-                        c.data = np.ma.masked_array(c.data/heaviside_t.data, heaviside_t.data <= args.hcrit).astype(np.float32)
+                    apply_mask(c, heaviside_t, args.hcrit)
                 else:
                     continue
             if args.verbose:
