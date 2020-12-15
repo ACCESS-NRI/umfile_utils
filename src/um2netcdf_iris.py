@@ -3,9 +3,24 @@ import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
 import cf_units, cftime, mule
 from netCDF4 import default_fillvals
+from iris.fileformats.pp import PPField
+
+# Override the PP file calendar function to use Proleptic Gregorian rather than Gregorian.
+# This matters for control runs with model years < 1600.
+@property
+def pg_calendar(self):
+    """Return the calendar of the field."""
+    # TODO #577 What calendar to return when ibtim.ic in [0, 3]
+    calendar = cf_units.CALENDAR_PROLEPTIC_GREGORIAN
+    if self.lbtim.ic == 2:
+        calendar = cf_units.CALENDAR_360_DAY
+    elif self.lbtim.ic == 4:
+        calendar = cf_units.CALENDAR_365_DAY
+    return calendar
+PPField.calendar = pg_calendar
 
 def convert_proleptic(time):
-    # Convert from hour to days and shift origin from 1970 to 0001
+    # Convert units from hours to days and shift origin from 1970 to 0001
     newunits = cf_units.Unit("days since 0001-01-01 00:00", calendar='proleptic_gregorian')
     # Need a copy because can't assign to time.points[i]
     tvals = np.array(time.points)
@@ -123,17 +138,16 @@ def cubewrite(cube,sman,compression,use64bit):
     time = cube.coord('time')
     reftime = cube.coord('forecast_reference_time')
     refdate = reftime.units.num2date(reftime.points[0])
-    if time.units.calendar=='gregorian':
-        assert time.units.origin == 'hours since 1970-01-01 00:00:00'
-        if refdate.year < 1600:
-            convert_proleptic(time)
-        else:
-            time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
-            time.points = time.points/24.
-            if time.bounds is not None:
-                time.bounds = time.bounds/24.
-        cube.remove_coord('forecast_period')
-        cube.remove_coord('forecast_reference_time')
+    assert time.units.origin == 'hours since 1970-01-01 00:00:00'
+    if refdate.year < 1600:
+        convert_proleptic(time)
+    else:
+        time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
+        time.points = time.points/24.
+        if time.bounds is not None:
+            time.bounds = time.bounds/24.
+    cube.remove_coord('forecast_period')
+    cube.remove_coord('forecast_reference_time')
 
     # Check whether any of the coordinates is a pseudo-dimension
     # with integer values and if so reset to int32 to prevent
@@ -167,7 +181,7 @@ def fix_cell_methods(mtuple):
 
 def apply_mask(c, heaviside, hcrit):
     # Function must handle case where the cube is defined on only a subset of the levels of the heaviside function
-    print("Apply mask", c.shape, heaviside.shape)
+    # print("Apply mask", c.shape, heaviside.shape)
     if c.shape == heaviside.shape:
         # If the shapes match it's simple
         # Temporarily turn off warnings from 0/0
@@ -177,7 +191,7 @@ def apply_mask(c, heaviside, hcrit):
         # Are the levels of c a subset of the levels of the heaviside variable?
         c_p = c.coord('pressure')
         h_p = heaviside.coord('pressure')
-        print('Levels for masking', c_p.points, h_p.points)
+        # print('Levels for masking', c_p.points, h_p.points)
         if set(c_p.points).issubset(h_p.points):
             # Match is possible
             constraint = iris.Constraint(pressure=c_p.points)
