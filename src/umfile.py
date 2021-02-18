@@ -50,9 +50,9 @@ class UMFile():
         # Need to check whether the native format is big or little
         # Here assuming little
         if array.dtype.byteorder == self.byteorder:
-            return self.fileobj.write(array.tostring())
+            return self.fileobj.write(array.tobytes())
         else:
-            return self.fileobj.write(array.byteswap().tostring())
+            return self.fileobj.write(array.byteswap().tobytes())
 
     def determine_file_type(self):
         # Get word length and byte order?
@@ -406,7 +406,7 @@ class UMFile():
         lookdim2, lookdim1 = self.ilookup.shape
         # Need to combine the ilookup and rlookup arrays to a single array
         # Convert the float part to an integer array
-        lookup = np.fromstring(self.rlookup[:lookdim2,:].tostring(),self.int).newbyteorder(self.byteorder)
+        lookup = np.fromstring(self.rlookup[:lookdim2,:].tobytes(),self.int).newbyteorder(self.byteorder)
         # Now copy the true integer part on top
         lookup.shape = (lookdim2, lookdim1)
         lookup[:,:45] = self.ilookup[:,:45]
