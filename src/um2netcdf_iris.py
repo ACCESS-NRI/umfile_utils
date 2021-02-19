@@ -105,7 +105,7 @@ def fix_level_coord(cube, z_rho, z_theta):
                 c_sigma.var_name = 'sigma_theta'
 
 
-def cubewrite(cube,sman,compression,use64bit):
+def cubewrite(cube, sman, compression, use64bit, verbose):
     try:
         plevs = cube.coord('pressure')
         if plevs.points[0] < plevs.points[-1]:
@@ -157,7 +157,18 @@ def cubewrite(cube,sman,compression,use64bit):
             coord.points = coord.points.astype(np.int32)
 
     try:
-        if cube.coord_dims('time'):
+        # If time is a dimension but not a coordinate dimension, coord_dims('time') returns an empty tuple
+        if tdim := cube.coord_dims('time'):
+            # For fields with a pseudo-level, time may not be the first dimension
+            if tdim != (0,):
+                tdim = tdim[0]
+                neworder = list(range(cube.ndim))
+                neworder.remove(tdim)
+                neworder.insert(0,tdim)
+                if verbose > 1:
+                    print("Incorrect dimension order", cube)
+                    print("Transpose to", neworder)
+                cube.transpose(neworder)
             sman.write(cube, zlib=True, complevel=compression, unlimited_dimensions=['time'], fill_value=fill_value)
         else:
             tmp = iris.util.new_axis(cube,cube.coord('time'))
@@ -341,7 +352,7 @@ def process(infile, outfile, args):
                     continue
             if args.verbose:
                 print(c.name(), itemcode)
-            cubewrite(c,sman,args.compression,args.use64bit)
+            cubewrite(c, sman, args.compression, args.use64bit, args.verbose)
 
 if __name__ == '__main__':
     import sys, argparse
@@ -352,8 +363,8 @@ if __name__ == '__main__':
                         default=4, help='compression level (0=none, 9=max). Default 4')
     parser.add_argument('--64', dest='use64bit', action='store_true', 
                     default=False, help='Use 64 bit netcdf for 64 bit input')
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', 
-                    default=False, help='verbose output')
+    parser.add_argument('-v', '--verbose', dest='verbose',
+                    action='count', default=0, help='verbose output (-vv for extra verbose)')
     parser.add_argument('--include', dest='include_list', type=int,
                         nargs = '+', help = 'List of stash codes to include')
     parser.add_argument('--exclude', dest='exclude_list', type=int,
