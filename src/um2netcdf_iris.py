@@ -330,7 +330,12 @@ def process(infile, outfile, args):
 
             # Interval in cell methods isn't reliable so better to remove it.
             c.cell_methods = fix_cell_methods(c.cell_methods)
-            fix_latlon_coord(c, grid_type, dlat, dlon)
+            try:
+                fix_latlon_coord(c, grid_type, dlat, dlon)
+            except iris.exceptions.CoordinateNotFoundError:
+                print('\nMissing lat/lon coordinates for variable (possible timeseries?)\n')
+                print(c)
+                raise Exception("Variable can not be processed")
             fix_level_coord(c, z_rho, z_theta)
 
             if stashcode.section == 30 and stashcode.item in (301,304):
