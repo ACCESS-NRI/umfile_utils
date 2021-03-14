@@ -108,13 +108,13 @@ def fix_level_coord(cube, z_rho, z_theta):
 def cubewrite(cube, sman, compression, use64bit, verbose):
     try:
         plevs = cube.coord('pressure')
+        plevs.attributes['positive'] = 'down'
+        plevs.convert_units('Pa')
+        # Otherwise they're off by 1e-10 which looks odd in ncdump
+        plevs.points = np.round(plevs.points,5)
         if plevs.points[0] < plevs.points[-1]:
-            # Flip (assuming pressure is first index)
-            plevs.attributes['positive'] = 'down'
-            # Otherwise they're off by 1e-10 which looks odd in ncdump
-            plevs.points = np.round(plevs.points,5)
-            if cube.coord_dims('pressure') == (0,):
-                cube = cube[::-1]
+            # Flip to get pressure decreasing as in CMIP6 standard
+            cube = iris.util.reverse(cube, 'pressure')
     except iris.exceptions.CoordinateNotFoundError:
         pass
     if not use64bit:
@@ -272,7 +272,7 @@ def process(infile, outfile, args):
 
         # Add global attributes
         if not args.nohist:
-            history = "File %s with converted with um2netcdf_iris.py at %s" % \
+            history = "File %s with converted with um2netcdf_iris.py v2.0 at %s" % \
                       (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
@@ -338,9 +338,6 @@ def process(infile, outfile, args):
                 raise Exception("Variable can not be processed")
             fix_level_coord(c, z_rho, z_theta)
 
-            if stashcode.section == 30 and stashcode.item in (301,304):
-                # Skip the mask fields themselves
-                continue
             if not args.nomask and stashcode.section == 30 and \
              (201 <= stashcode.item <= 288  or 302 <= stashcode.item <= 303):
                 # Pressure level data should be masked
