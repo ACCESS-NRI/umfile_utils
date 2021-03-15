@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import iris, numpy as np, datetime, sys
 import stashvar_cmip6 as stashvar
 from iris.coords import CellMethod
@@ -272,7 +274,7 @@ def process(infile, outfile, args):
 
         # Add global attributes
         if not args.nohist:
-            history = "File %s with converted with um2netcdf_iris.py v2.0 at %s" % \
+            history = "File %s converted with um2netcdf_iris.py v2.0 at %s" % \
                       (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
