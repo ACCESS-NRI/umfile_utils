@@ -70,7 +70,7 @@ f = umfile.UMFile(ifile)
 g = umfile.UMFile(ofile, "w")
 g.copyheader(f)
 g.ilookup[:] = -99 # Used as missing value
-g.rlookup[:] = np.fromstring(np.array([-99],g.int).tobytes(),g.float)
+g.rlookup[:] = np.frombuffer(np.array([-99],g.int).tobytes(),g.float)
 
 # Initial check for packed fields that require the land-sea mask
 needmask=False
