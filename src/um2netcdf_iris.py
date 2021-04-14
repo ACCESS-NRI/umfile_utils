@@ -124,7 +124,7 @@ def cubewrite(cube, sman, compression, use64bit, verbose):
             cube.data = cube.data.astype(np.float32)
         elif cube.data.dtype == 'int64':
             cube.data = cube.data.astype(np.int32)
-    
+
     # Set the missing_value attribute. Use an array to force the type to match
     # the data type
     if cube.data.dtype.kind == 'f':
@@ -226,7 +226,7 @@ def process(infile, outfile, args):
     elif ff.fixed_length_header.grid_staggering == 3:
         grid_type = 'ND'
     else:
-        raise Exception("Unable to determine grid staggering from header %d" % 
+        raise Exception("Unable to determine grid staggering from header %d" %
                         ff.fixed_length_header.grid_staggering)
     dlat = ff.real_constants.row_spacing
     dlon = ff.real_constants.col_spacing
@@ -242,7 +242,7 @@ def process(infile, outfile, args):
         return c.attributes['STASH']
     cubes.sort(key=keyfunc)
 
-    # Check whether there are any pressure level fields that should be 
+    # Check whether there are any pressure level fields that should be
     # masked. Can use temperature to mask instantaneous fields, so really
     # should check whether these are time means
     need_heaviside_uv = need_heaviside_t = False
@@ -268,7 +268,7 @@ def process(infile, outfile, args):
         print("""Warning - heaviside_t field needed for masking pressure level data is not present.
     These fields will be skipped""")
 
-    nc_formats = {1: 'NETCDF3_CLASSIC', 2: 'NETCDF3_64BIT', 
+    nc_formats = {1: 'NETCDF3_CLASSIC', 2: 'NETCDF3_64BIT',
                   3: 'NETCDF4', 4: 'NETCDF4_CLASSIC'}
     with iris.fileformats.netcdf.Saver(outfile, nc_formats[args.nckind]) as sman:
 
@@ -365,7 +365,7 @@ if __name__ == '__main__':
                         default=3, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 3', choices=[1,2,3,4])
     parser.add_argument('-c', dest='compression', required=False, type=int,
                         default=4, help='compression level (0=none, 9=max). Default 4')
-    parser.add_argument('--64', dest='use64bit', action='store_true', 
+    parser.add_argument('--64', dest='use64bit', action='store_true',
                     default=False, help='Use 64 bit netcdf for 64 bit input')
     parser.add_argument('-v', '--verbose', dest='verbose',
                     action='count', default=0, help='verbose output (-vv for extra verbose)')
@@ -373,16 +373,16 @@ if __name__ == '__main__':
                         nargs = '+', help = 'List of stash codes to include')
     parser.add_argument('--exclude', dest='exclude_list', type=int,
                         nargs = '+', help = 'List of stash codes to exclude')
-    parser.add_argument('--nomask', dest='nomask', action='store_true', 
+    parser.add_argument('--nomask', dest='nomask', action='store_true',
                     default=False, help="Don't apply heaviside function mask to pressure level fields")
-    parser.add_argument('--nohist', dest='nohist', action='store_true', 
+    parser.add_argument('--nohist', dest='nohist', action='store_true',
                     default=False, help="Don't update history attribute")
-    parser.add_argument('--simple', dest='simple', action='store_true', 
+    parser.add_argument('--simple', dest='simple', action='store_true',
                     default=False, help="Use a simple names of form fld_s01i123.")
-    parser.add_argument('--hcrit', dest='hcrit', type=float, 
+    parser.add_argument('--hcrit', dest='hcrit', type=float,
                     default=0.5, help="Critical value of heavyside fn for pressure level masking (default=0.5)")
-    parser.add_argument('infile', nargs='?', help='Input file')
-    parser.add_argument('outfile', nargs='?', help='Output file')
+    parser.add_argument('infile', help='Input file')
+    parser.add_argument('outfile', help='Output file')
 
     args = parser.parse_args()
 

@@ -104,7 +104,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
         return c.attributes['STASH']
     cubes.sort(key=keyfunc)
 
-    # Check whether there are any pressure level fields that should be 
+    # Check whether there are any pressure level fields that should be
     # masked. Can use temperature to mask instantaneous fields, so really
     # should check whether these are time means
     need_heaviside = False
@@ -122,7 +122,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
         print("""Warning - heaviside field needed for masking pressure level data is not present.
     These fields will be skipped""")
 
-    nc_formats = {1: 'NETCDF3_CLASSIC', 2: 'NETCDF3_64BIT', 
+    nc_formats = {1: 'NETCDF3_CLASSIC', 2: 'NETCDF3_64BIT',
                   3: 'NETCDF4', 4: 'NETCDF4_CLASSIC'}
     with iris.fileformats.netcdf.Saver(outfile, nc_formats[nckind]) as sman:
 
@@ -187,7 +187,7 @@ def process(infile,outfile,verbose=False,nckind=3,compression=4,nomask=False,inc
                 # Pressure level data should be masked
                 if have_heaviside:
                     # Temporarily turn off warnings from 0/0
-                    with np.errstate(divide='ignore',invalid='ignore'):               
+                    with np.errstate(divide='ignore',invalid='ignore'):
                         c.data = np.ma.masked_array(c.data/heaviside.data, heaviside.data <= hcrit).astype(np.float32)
                 else:
                     continue
@@ -202,16 +202,16 @@ if __name__ == '__main__':
                         default=3, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 3', choices=[1,2,3,4])
     parser.add_argument('-c', dest='compression', required=False, type=int,
                         default=4, help='compression level (0=none, 9=max). Default 4')
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', 
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                     default=False, help='verbose output')
     parser.add_argument('--include', dest='include', type=int,
                         nargs = '+', help = 'List of stash codes to include')
     parser.add_argument('--exclude', dest='exclude', type=int,
                         nargs = '+', help = 'List of stash codes to exclude')
-    parser.add_argument('--nomask', dest='nomask', action='store_true', 
+    parser.add_argument('--nomask', dest='nomask', action='store_true',
                     default=False, help="Don't apply heaviside function mask to pressure level fields")
-    parser.add_argument('infile', nargs='?', help='Input file')
-    parser.add_argument('outfile', nargs='?', help='Output file')
+    parser.add_argument('infile', help='Input file')
+    parser.add_argument('outfile', help='Output file')
 
     args = parser.parse_args()
 

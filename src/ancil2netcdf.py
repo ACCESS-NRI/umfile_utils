@@ -164,8 +164,8 @@ if __name__ == '__main__':
                         nargs = '+', help = 'List of stash codes to exclude')
     parser.add_argument('--simple', dest='simple', action='store_true',
                     default=False, help="Use a simple names of form fld_s01i123.")
-    parser.add_argument('infile', nargs='?', help='Input file')
-    parser.add_argument('outfile', nargs='?', help='Output file')
+    parser.add_argument('infile', help='Input file')
+    parser.add_argument('outfile', help='Output file')
 
     args = parser.parse_args()
 

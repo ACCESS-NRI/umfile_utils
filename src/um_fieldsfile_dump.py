@@ -13,18 +13,18 @@ from um_fileheaders import *
 import umfile, stashvar
 
 parser = argparse.ArgumentParser(description="Dump contents of a UM fieldsfile")
-parser.add_argument('-H', dest='header_only', action='store_true', 
+parser.add_argument('-H', dest='header_only', action='store_true',
                 default=False, help='show header only')
-parser.add_argument('--noheader', dest='noheader', action='store_true', 
+parser.add_argument('--noheader', dest='noheader', action='store_true',
                 default=False, help="Don't show file header")
-parser.add_argument('-s', dest='short', action='store_true', 
+parser.add_argument('-s', dest='short', action='store_true',
                 default=False, help='short list of fields')
-parser.add_argument('-S', dest='summary', action='store_true', 
+parser.add_argument('-S', dest='summary', action='store_true',
                 default=False, help='summary similar to model list of expected fields')
-parser.add_argument('infile', nargs='?', help='Input file')
+parser.add_argument('infile', help='Input file')
 
 args = parser.parse_args()
-    
+
 f = umfile.UMFile(args.infile)
 
 if not f.fieldsfile:
@@ -67,7 +67,7 @@ lastvar = None
 nl = 0
 nfld = 0
 if not args.header_only:
-    
+
     for k in range(f.fixhd[FH_LookupSize2]):
         ilookup = f.ilookup[k]
         lblrec = ilookup[LBLREC]
