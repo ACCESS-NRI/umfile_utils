@@ -2,6 +2,10 @@
 # Code from setcona
 # Ignore Earth_radius term to get height above MSL.
 
+# In the UM, dimensions are r_theta_levels(0:model_levels), r_rho_levels(1:model_levels)
+# To keep the relative arragement intact, add an extra value at the start of r_rho_levels
+# here
+
 import f90nml
 import numpy as np
 
@@ -18,9 +22,10 @@ def setvertlevs(vfile, orog):
 
     ashape = (len(eta_theta_levels),) + orog.shape
     print("ASHAPE", ashape)
-    
+
     r_theta_levels = np.zeros(ashape)
     r_rho_levels = np.zeros(ashape)
+    r_rho_levels[0] = np.nan
 
     r_ref_theta = eta_theta_levels * z_top_of_model
     r_ref_rho = eta_rho_levels * z_top_of_model
@@ -35,7 +40,7 @@ def setvertlevs(vfile, orog):
         r_theta_levels[first_constant_r_rho_level:] = r_ref_theta[first_constant_r_rho_level:,np.newaxis]
         r_rho_levels[first_constant_r_rho_level:] = r_ref_rho[first_constant_r_rho_level:,np.newaxis]
 
- 
+
     #  Case( height_gen_smooth )
     # A smooth quadratic height generation
     for k in range(1, first_constant_r_rho_level):
