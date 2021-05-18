@@ -98,7 +98,7 @@ def process(infile, outfile, args):
     with iris.fileformats.netcdf.Saver(outfile, 'NETCDF4') as sman:
 
         # Add global attributes
-        history = "File %s converted with acnil2netcdf.py at %s" % \
+        history = "File %s converted with ancil2netcdf.py at %s" % \
                     (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
