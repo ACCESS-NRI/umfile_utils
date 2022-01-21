@@ -59,7 +59,7 @@ for k in range(f.fixhd[FH_LookupSize2]):
         # Packing
         n3 = (ilookup[LBPACK] // 100) % 10
         # Don't check shape if data is packed to land or ocean points
-        if n3==0 and not (ilookup[LBROW], ilookup[LBNPT]) == arr.shape:
+        if n3==0 and not (ilookup[LBROW], ilookup[LBNPT]) == arr.shape[-2:]:
             print("\nError: array shape mismatch")
             print("UM field shape", (ilookup[LBROW], ilookup[LBNPT]))
             print("netcdf field shape", arr.shape)
