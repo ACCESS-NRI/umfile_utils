@@ -137,19 +137,23 @@ def cubewrite(cube, sman, compression, use64bit, verbose):
 
     # If reference date is before 1600 use proleptic gregorian
     # calendar and change units from hours to days
-    time = cube.coord('time')
-    reftime = cube.coord('forecast_reference_time')
-    refdate = reftime.units.num2date(reftime.points[0])
-    assert time.units.origin == 'hours since 1970-01-01 00:00:00'
-    if refdate.year < 1600:
-        convert_proleptic(time)
-    else:
-        time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
-        time.points = time.points/24.
-        if time.bounds is not None:
-            time.bounds = time.bounds/24.
-    cube.remove_coord('forecast_period')
-    cube.remove_coord('forecast_reference_time')
+    try:
+        reftime = cube.coord('forecast_reference_time')
+        time = cube.coord('time')
+        refdate = reftime.units.num2date(reftime.points[0])
+        assert time.units.origin == 'hours since 1970-01-01 00:00:00'
+        if refdate.year < 1600:
+            convert_proleptic(time)
+        else:
+            time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
+            time.points = time.points/24.
+            if time.bounds is not None:
+                time.bounds = time.bounds/24.
+        cube.remove_coord('forecast_period')
+        cube.remove_coord('forecast_reference_time')
+    except iris.exceptions.CoordinateNotFoundError:
+        # Dump files don't have forecast_reference_time
+        pass
 
     # Check whether any of the coordinates is a pseudo-dimension
     # with integer values and if so reset to int32 to prevent
@@ -220,7 +224,7 @@ def apply_mask(c, heaviside, hcrit):
 def process(infile, outfile, args):
 
     # Use mule to get the model levels to help with dimension naming
-    ff = mule.FieldsFile.from_file(infile)
+    ff = mule.load_umfile(infile)
     if ff.fixed_length_header.grid_staggering == 6:
         grid_type = 'EG'
     elif ff.fixed_length_header.grid_staggering == 3:
