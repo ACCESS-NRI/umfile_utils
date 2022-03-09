@@ -219,7 +219,7 @@ def apply_mask(c, heaviside, hcrit):
             with np.errstate(divide='ignore',invalid='ignore'):
                 c.data = np.ma.masked_array(c.data/h_tmp.data, h_tmp.data <= hcrit).astype(np.float32)
         else:
-            raise Exception('Unable to match levels of heaviside function to variable')
+            raise Exception('Unable to match levels of heaviside function to variable %s' % c.name())
 
 def process(infile, outfile, args):
 
