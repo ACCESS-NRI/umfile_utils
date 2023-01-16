@@ -228,7 +228,8 @@ def apply_mask(c, heaviside, hcrit):
 def process(infile, outfile, args):
 
     # Use mule to get the model levels to help with dimension naming
-    ff = mule.load_umfile(infile)
+    # mule 2020.01.1 doesn't handle pathlib Paths properly
+    ff = mule.load_umfile(str(infile))
     if ff.fixed_length_header.grid_staggering == 6:
         grid_type = 'EG'
     elif ff.fixed_length_header.grid_staggering == 3:
