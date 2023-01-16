@@ -142,10 +142,14 @@ def cubewrite(cube, sman, compression, use64bit, verbose):
         time = cube.coord('time')
         refdate = reftime.units.num2date(reftime.points[0])
         assert time.units.origin == 'hours since 1970-01-01 00:00:00'
-        if refdate.year < 1600:
+        if time.units.calendar == 'proleptic_gregorian' and refdate.year < 1600:
             convert_proleptic(time)
         else:
-            time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar='proleptic_gregorian')
+            if time.units.calendar == 'gregorian':
+                new_calendar = 'proleptic_gregorian'
+            else:
+                new_calendar = time.units.calendar
+            time.units = cf_units.Unit("days since 1970-01-01 00:00", calendar=new_calendar)
             time.points = time.points/24.
             if time.bounds is not None:
                 time.bounds = time.bounds/24.
@@ -278,7 +282,7 @@ def process(infile, outfile, args):
 
         # Add global attributes
         if not args.nohist:
-            history = "File %s converted with um2netcdf_iris.py v2.0 at %s" % \
+            history = "File %s converted with um2netcdf_iris.py v2.1 at %s" % \
                       (infile, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             sman.update_global_attributes({'history':history})
         sman.update_global_attributes({'Conventions':'CF-1.6'})
