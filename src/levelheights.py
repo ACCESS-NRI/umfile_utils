@@ -9,19 +9,22 @@
 import f90nml
 import numpy as np
 
-def setvertlevs(vfile, orog):
+def setvertlevs(vfile, orog, verbose=False):
 
     vertlevs = f90nml.read(vfile)['vertlevs']
-    print("VERTLEVS", vertlevs)
+    if verbose:
+        print("VERTLEVS", vertlevs)
 
     eta_theta_levels  = np.array(vertlevs['eta_theta']) # (0:model_levels)
     eta_rho_levels = np.array([-1e20] + vertlevs['eta_rho'])  # (1:model_levels)
     z_top_of_model = vertlevs['z_top_of_model']
     first_constant_r_rho_level = vertlevs['first_constant_r_rho_level']
-    print(eta_rho_levels)
+    if verbose:
+        print("eta_rho", eta_rho_levels)
 
     ashape = (len(eta_theta_levels),) + orog.shape
-    print("ASHAPE", ashape)
+    if verbose:
+        print("ASHAPE", ashape)
 
     r_theta_levels = np.zeros(ashape)
     r_rho_levels = np.zeros(ashape)
@@ -53,6 +56,6 @@ def setvertlevs(vfile, orog):
 
 if __name__ == '__main__':
     orog = np.arange(0,6000,1000.)
-    r_theta_levels, r_rho_levels = setvertlevs('vertlevs_G3',orog)
+    r_theta_levels, r_rho_levels = setvertlevs('vertlevs_G3', orog, verbose=True)
     dr0 = r_theta_levels[1:,0] - r_theta_levels[:-1,0]
     drx = r_theta_levels[1:,-1] - r_theta_levels[:-1,-1]

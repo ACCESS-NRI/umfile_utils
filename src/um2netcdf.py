@@ -4,7 +4,7 @@
 # For min, max temperature, also need to match on cell_methods attribute
 # Assume this starts with time0:
 
-# Climate diagnostics on pressure levels are normally masked and need to be 
+# Climate diagnostics on pressure levels are normally masked and need to be
 # corrected using the Heavyside function.
 # nomask option turns this off (special case for runs where these were
 # saved differently).
@@ -35,11 +35,11 @@ parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file 
 parser.add_argument('-s', dest='stashcode', required=True, help=' section,item (Stash code for variable)')
 parser.add_argument('-v', dest='vname', help='Override default variable name in output file')
 parser.add_argument('-m', dest='cell_methods', help='cell_methods (required if there are multiple instances of a variable with different cell methods, e.g. ave, min and max temp)')
-parser.add_argument('-a', dest='average', action='store_true', 
+parser.add_argument('-a', dest='average', action='store_true',
                     default=False, help="Calculate time average.")
-parser.add_argument('-d', dest='forcedaily', action='store_true', 
+parser.add_argument('-d', dest='forcedaily', action='store_true',
                     default=False, help="Force daily time values (work around cdms error)")
-parser.add_argument('--nomask', dest='nomask', action='store_true', 
+parser.add_argument('--nomask', dest='nomask', action='store_true',
                     default=False, help="Don't apply Heavyside function mask to pressure level fields.")
 parser.add_argument('-k', dest='nckind', required=False, type=int,
                     default=4, help='specify kind of netCDF format for output file: 1 classic, 2 64-bit offset, 3 netCDF-4, 4 netCDF-4 classic model. Default 4', choices=[1,2,3,4])
@@ -63,12 +63,12 @@ print("Matching variables")
 for vn in d.variables:
     v = d.variables[vn]
     # Need to check whether it really has a stash_item to skip coordinate variables
-    
+
     # Note: need to match both item and section number
     if hasattr(v,'stash_item') and v.stash_item[0] == stash_item and v.stash_section[0] == stash_section:
         print(vn, get_cell_methods(v))
         # Need to cope with variables that have no cell methods so check
-        # cell_methods is None 
+        # cell_methods is None
         if args.cell_methods == None or (args.cell_methods != None and get_cell_methods(v) == args.cell_methods):
             # print("Cell match", vn, v.cell_methods)
             if var:
@@ -76,7 +76,7 @@ for vn in d.variables:
                 raise Exception("Multiple variables match")
             else:
                 var = v
-            
+
 if not var:
     raise Exception("Variable not found %d %d" % ( stash_item, stash_section))
 
@@ -97,7 +97,7 @@ if not args.vname:
 print(vname, var[0,0,0,0])
 
 hcrit = 0.5 # Critical value of Heavyside function for inclusion.
- 
+
 #  If output file exists then append to it, otherwise create a new file
 # Different versions of netCDF4 module give different exceptions, so
 # test for existence explicitly
@@ -107,7 +107,7 @@ if exists:
     newv = f.variables[vname]
     newtime = f.variables['time']
 else:
-    ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT', 
+    ncformats = {1:'NETCDF3_CLASSIC', 2:'NETCDF3_64BIT',
                  3:'NETCDF4', 4:'NETCDF4_CLASSIC'}
     f = netCDF4.Dataset(args.ofile,'w', format=ncformats[args.nckind])
     f.history = "Created by um2netcdf.py."
@@ -135,14 +135,14 @@ else:
         newlev[:] = lev[:]
     else:
         newlev = None
-                                  
+
     f.createDimension('time', None)
     newtime = f.createVariable('time', np.float64, ('time',))
     newtime.standard_name = "time"
     newtime.units = time.units # "days since " + `baseyear` + "-01-01 00:00"
     newtime.calendar = time.calendar
     newtime.axis = "T"
-    
+
     if var.dtype == np.dtype('int32'):
         vtype = np.int32
         missval = -2147483647
@@ -150,7 +150,7 @@ else:
         vtype = np.float32
         # UM missing value
         missval = -2.**30
-      
+
     if newlev:
         newv = f.createVariable(vname, vtype, ('time', 'lev', 'lat', 'lon'), fill_value=missval, zlib=True, complevel=args.deflate_level)
     else:
@@ -222,7 +222,7 @@ else:
         if var.shape[1] > 1:
             # Multi-level
             if (30201 <= item_code <= 30303) and mask:
-                newv[k+i] = np.where( np.greater(heavyside[i], hcrit), var[i]/heavyside[0], var.getMissing())
+                newv[k+i] = np.where( np.greater(heavyside[i], hcrit), var[i]/heavyside[i], var.getMissing())
             else:
                 newv[k+i] = var[i]
         else:

@@ -1,6 +1,6 @@
 # UM STASH variable names from section and item numbers
 # Where available variable names match PCMDI convention
-# Fifth field is a unique name suitable for filenames or creating multiple 
+# Fifth field is a unique name suitable for filenames or creating multiple
 # variables in a single file
 
 atm_stashvar = {}
@@ -182,7 +182,7 @@ atm_stashvar[212] = ["CCRad : CCW passed to radiation", "", "", "", ""]
 atm_stashvar[213] = ["CANOPY CONDUCTANCE AFTER TIMESTEP", "", "", "", ""]
 atm_stashvar[214] = ["UNFROZEN SOIL MOISTURE FRAC AFTER TS", "", "", "", ""]
 atm_stashvar[215] = ["FROZEN SOIL MOISTURE FRAC AFTER TS", "", "", "", ""]
-atm_stashvar[216] = ["FRACTIONS OF SURFACE TYPES", "", "", "", ""]
+atm_stashvar[216] = ["FRACTIONS OF SURFACE TYPES", "landCoverFrac", "1", "area_fraction", ""]
 atm_stashvar[217] = ["LEAF AREA INDEX OF PLANT FUNC TYPES", "", "", "", ""]
 atm_stashvar[218] = ["CANOPY HEIGHT OF PLANT FUNC TYPES M", "", "", "", ""]
 atm_stashvar[219] = ["DISTURBED FRACTION OF VEGETATION", "", "", "", ""]
@@ -385,7 +385,7 @@ atm_stashvar[499] = ["URBAN WALL ALBEDO", "", "1", "", ""]
 atm_stashvar[500] = ["URBAN ROAD ALBEDO", "", "1", "", ""]
 atm_stashvar[501] = ["URBAN WALL EMISSIVITY", "", "1", "", ""]
 atm_stashvar[502] = ["URBAN ROAD EMISSIVITY", "", "1", "", ""]
-atm_stashvar[505] = ["Land fraction in grid box", "sftlf", "%", "land_area_fraction", ""]
+atm_stashvar[505] = ["Land fraction in grid box", "sftlf", "1", "land_area_fraction", ""]
 atm_stashvar[506] = ["LAND SURFACE TEMP AFTER TIMESTEP", "ts", "K", "surface_temperature_where_land", "ts_land"]
 atm_stashvar[507] = ["OPEN SEA SURFACE TEMP AFTER TIMESTEP", "ts", "K", "surface_temperature_where_open_sea", "ts_sea"]
 atm_stashvar[508] = ["SEA-ICE SURFACE TEMP AFTER TIMESTEP", "ts", "K", "surface_temperature", "ts_ice"]
@@ -1097,7 +1097,7 @@ atm_stashvar[3291] = ["NET PRIMARY PRODUCTIVITY ON PFTS", "npp_tile", "kg m-2 s-
 atm_stashvar[3292] = ["PLANT RESPIRATION ON PFTS  KG C/M2/S", "", "kg m-2 s-1", "", ""]
 atm_stashvar[3293] = ["SOIL RESPIRATION           KG C/M2/S", "resp_soil", "kg m-2 s-1", "", ""]
 atm_stashvar[3294] = ["BULK RICHARDSON NUMBER ON TILES", "", "", "", ""]
-atm_stashvar[3296] = ["EVAP FROM SOIL SURF : RATE   KG/M2/S", "evspsblsoil", "kg m-2 s-1", "water_evaporation_flux_from_soil", ""] 
+atm_stashvar[3296] = ["EVAP FROM SOIL SURF : RATE   KG/M2/S", "evspsblsoil", "kg m-2 s-1", "water_evaporation_flux_from_soil", ""]
 atm_stashvar[3297] = ["EVAP FROM CANOPY : RATE      KG/M2/S", "evspsblveg", "kg m-2 s-1", "water_evaporation_flux_from_canopy", ""]
 atm_stashvar[3298] = ["SUBLIM. SURFACE (GBM) : RATE KG/M2/S", "sbl", "kg m-2 s-1", "surface_snow_and_ice_sublimation_flux", ""]
 atm_stashvar[3300] = ["NH3 SURFACE DRY DEP FLUX KG/M2/S", "", "", "", ""]
@@ -4707,7 +4707,7 @@ atm_stashvar[54967] = ["CLOUD DROP. No. CONC. ^-1/3 m-1 CLIM", "", "", "", ""]
 atm_stashvar[54968] = ["CLOUD DROP. No. CONC. (m-3) CLIM", "", "", "", ""]
 
 class StashVar:
-    
+
     def __init__(self, code, model=1):
         # Allow this to be 0 to support some ancillary files
         if model in [0, 1]:

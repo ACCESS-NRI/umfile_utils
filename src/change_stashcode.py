@@ -20,9 +20,9 @@ try:
             newindex = int(newindex)
             vdict[oldindex] = newindex
 except getopt.error:
-    print "Usage: change_stashcode.py -v oldindex,newindex file"
-    print "       Variables specified by STASH index = Section Number * 1000 + item number"
-    print "       May use multiple -v arguments"
+    print("Usage: change_stashcode.py -v oldindex,newindex file")
+    print("       Variables specified by STASH index = Section Number * 1000 + item number")
+    print("       May use multiple -v arguments")
     sys.exit(2)
 
 ifile = args[0]
@@ -40,7 +40,6 @@ for k in range(f.fixhd[FH_LookupSize2]):
         ilookup[ITEM_CODE] = vdict[ilookup[ITEM_CODE]]
 
 if not changed:
-    print "Warning - no fields changed"
+    print("Warning - no fields changed")
 
 f.close()
-

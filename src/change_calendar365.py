@@ -23,11 +23,11 @@ f.fixhd[FH_CalendarType] = 1
 # dayno = [0, 14, 45, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349]
 for k in range(f.fixhd[FH_LookupSize2]):
     ilookup = f.ilookup[k]
-#     print "Validity time", ilookup[LBYR], ilookup[LBMON], ilookup[LBDAT], \
-#         ilookup[LBHR], ilookup[LBMIN], ilookup[LBDAY]
-#     print "Data time", ilookup[LBYRD], ilookup[LBMOND], ilookup[LBDATD], \
-#         ilookup[LBHRD], ilookup[LBMIND], ilookup[LBDAYD]
-#     print "LBTIM", ilookup[LBTIM]
+#     print("Validity time", ilookup[LBYR], ilookup[LBMON], ilookup[LBDAT], \
+#         ilookup[LBHR], ilookup[LBMIN], ilookup[LBDAY])
+#     print( "Data time", ilookup[LBYRD], ilookup[LBMOND], ilookup[LBDATD], \
+#         ilookup[LBHRD], ilookup[LBMIND], ilookup[LBDAYD])
+#     print()"LBTIM", ilookup[LBTIM])
 #     ilookup[LBDAT] = ilookup[LBDATD] = 15
 #     ilookup[LBHR] = ilookup[LBHRD] = 0
 #     ilookup[LBMIN] = ilookup[LBMIND] = 0

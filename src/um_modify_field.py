@@ -17,11 +17,12 @@ parser.add_argument('file', help='File to be modified')
 args = parser.parse_args()
 
 if args.scale == 1 and args.offset == 0:
-    print "Nothing to be done, a=1, b=0"
+    print("Nothing to be done, a=1, b=0")
     sys.exit(0)
 
 f = umfile.UMFile(args.file, 'r+')
 
+changed = False
 for k in range(f.fixhd[FH_LookupSize2]):
     ilookup = f.ilookup[k]
     lbegin = ilookup[LBEGIN] # lbegin is offset from start
@@ -31,5 +32,9 @@ for k in range(f.fixhd[FH_LookupSize2]):
         a = f.readfld(k)
         a[:] = a[:] * args.scale + args.offset
         f.writefld(a,k)
+        changed = True
+
+if not changed:
+    print('Warning: no fields changed')
 
 f.close()

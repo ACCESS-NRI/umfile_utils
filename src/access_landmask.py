@@ -1,5 +1,5 @@
-# Set up a land mask fiel for access
-# Ancillary mask file qrparm.mask at appropriate resolution must alreay exist.
+# Set up a land mask file for access
+# Ancillary mask file qrparm.mask at appropriate resolution must already exist.
 # Also qrparm.landfrac
 # Martin Dix martin.dix@csiro.au
 

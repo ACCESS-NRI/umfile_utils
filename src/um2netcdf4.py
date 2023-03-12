@@ -66,7 +66,7 @@ renameDims = {}
 #               'z3_p_level':'lev','time0':'time','time1':'time_1',\
 #         'z6_hybrid_sigmap':'z0_hybrid_height','z5_hybrid_sigmap':'z0_hybrid_height'}
 
-# Not really clear what this is, but no variables depend on it and lack of units
+# cdms seems to get this from bounds, but no variables depend on it and lack of units
 # causes problems
 excludeDims=['nv']
 
@@ -102,6 +102,10 @@ def write_nc_dimension(dimension,fi,fo):
             dimout = 'lon_river'
         elif dval[0] == 0.:
             dimout = 'lon_u'
+        elif len(dval) == 1:
+            # Zonal means. Longitude value is the second last grid value
+            print(dval)
+            dimout = 'lon_zmean'
         else:
             dimout = 'lon'
         renamed = True

@@ -6,7 +6,7 @@
 
 # Martin Dix martin.dix@csiro.au
 
-import argparse, sys
+import argparse
 import umfile
 from um_fileheaders import *
 from numpy.random import MT19937, RandomState, SeedSequence
@@ -14,8 +14,8 @@ from numpy.random import MT19937, RandomState, SeedSequence
 parser = argparse.ArgumentParser(description="Perturb UM initial dump")
 parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
                     help = 'Amplitude of perturbation')
-parser.add_argument('-s', dest='seed', type=int, default=-1,
-    help = 'Random number seed (default -1 means non-reprodicible system initialisation)')
+parser.add_argument('-s', dest='seed', type=int, required=True,
+    help = 'Random number seed (must be non-negative integer)')
 parser.add_argument('ifile', help='Input file (modified in place)')
 
 args = parser.parse_args()
@@ -23,8 +23,7 @@ args = parser.parse_args()
 if args.seed >= 0:
     rs = RandomState(MT19937(SeedSequence(args.seed)))
 else:
-    # Default system initialisation (not reproducible)
-    rs = RandomState(MT19937(SeedSequence()))
+    raise Exception('Seed must be positive')
 
 f = umfile.UMFile(args.ifile, 'r+')
 

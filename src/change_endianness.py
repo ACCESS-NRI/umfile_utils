@@ -16,7 +16,7 @@ try:
         elif opt[0] == '-o':
             ofile = opt[1]
 except getopt.error:
-    print "Usage: change_endianness.py -i ifile -o ofile"
+    print("Usage: change_endianness.py -i ifile -o ofile")
     sys.exit(2)
 
 f = umfile.UMFile(ifile)
@@ -41,8 +41,8 @@ else:
 if (g.byteorder == '<' and sys.byteorder == 'little') or \
    (g.byteorder == '>' and sys.byteorder == 'big'):
     g.byteorder = '='
-    
-print "Byte orders", f.byteorder, g.byteorder
+
+print("Byte orders", f.byteorder, g.byteorder)
 
 for k in range(f.fixhd[FH_LookupSize2]):
     ilookup = f.ilookup[k]
@@ -50,5 +50,5 @@ for k in range(f.fixhd[FH_LookupSize2]):
     data = f.readfld(k)
     # Why does this have to be explicit?
     g.writefld(data,k)
-    
+
 g.close()

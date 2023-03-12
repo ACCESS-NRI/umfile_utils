@@ -8,10 +8,10 @@ import umfile, sys
 f = umfile.UMFile(sys.argv[1], 'r')
 
 if f.fixhd[FH_CalendarType] == 1:
-    print "Gregorian"
+    print("Gregorian")
 elif f.fixhd[FH_CalendarType] == 2:
-    print "360 day"
+    print("360 day")
 elif f.fixhd[FH_CalendarType] == f.missval_i:
-    print "Not set"
+    print("Not set")
 else:
-    print "Unexpected calendar value", f.fixhd[FH_CalendarType]
+    print("Unexpected calendar value", f.fixhd[FH_CalendarType])
