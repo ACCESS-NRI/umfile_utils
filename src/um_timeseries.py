@@ -15,43 +15,34 @@
 # Martin Dix martin.dix@csiro.au
 
 import numpy as np
-import getopt, sys, time
+import argparse, sys, time
 import stashvar
 from um_fileheaders import *
 import umfile
 import netCDF4
 import cdtime
 
-def usage():
-    print "Usage: um_timeseries.py -i ifile -o ofile [-v]"
-    sys.exit(2)
+parser = argparse.ArgumentParser(description="Convert UM timeseries file to netCDF.")
+parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
+parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file')
+parser.add_argument('-v', '--verbose', dest='verbose',
+                    action='count', default=0, help='verbose output (-vv for extra verbose)')
+args = parser.parse_args()
 
-verbose = False
-ifile = None
-ofile = None
-try:
-    optlist, args = getopt.getopt(sys.argv[1:], 'i:o:v')
-    for opt in optlist:
-        if opt[0] == '-i':
-            ifile = opt[1]
-        elif opt[0] == '-o':
-            ofile = opt[1]
-        elif opt[0] == '-v':
-            verbose = True
-except getopt.error:
-    usage()
 
-if not ifile or not ofile:
-    usage()
+f = umfile.UMFile(args.ifile)
+d = netCDF4.Dataset(args.ofile,"w",format='NETCDF3_CLASSIC')
 
-f = umfile.UMFile(ifile)
-d = netCDF4.Dataset(ofile,"w",format='NETCDF3_CLASSIC')
-
-if verbose:
+if args.verbose > 1:
     f.print_fixhead()
+    print("REAL HEADER", f.realhead)
 
-if verbose:
-    print "REAL HEADER", f.realhead
+# Lat and lon are incorrect with ENDGAME
+eg_grid = f.fixhd[FH_GridStagger] == 6
+dlon = f.realhead[RC_LongSpacing]
+dlat = f.realhead[RC_LatSpacing]
+lon0 = f.realhead[RC_FirstLong]
+lat0 = f.realhead[RC_FirstLat]
 
 # Loop over all the loookup headers to set up the netcdf file.
 # Check each variable is defined on the same times.
@@ -78,11 +69,11 @@ for k in range(f.fixhd[FH_LookupSize2]):
         break
 
 if not timeseries:
-    print "File contains no timeseries data"
+    print("File contains no timeseries data")
     sys.exit(1)
 
-if verbose:
-    print "Number of records", f.fixhd[FH_LookupSize2]
+if args.verbose:
+    print("Number of records", f.fixhd[FH_LookupSize2])
 var = None
 for k in range(f.fixhd[FH_LookupSize2]):
     ilookup = f.ilookup[k]
@@ -95,7 +86,8 @@ for k in range(f.fixhd[FH_LookupSize2]):
     lbnrec = ilookup[LBNREC] # Actual size
     if lbegin == -99:
         break
-
+    if args.verbose:
+        print(f"\n*** RECORD {k} ***")
     # if var and var.code == ilookup[ITEM_CODE]:
     # Then this is another level of the same variable
 
@@ -115,12 +107,12 @@ for k in range(f.fixhd[FH_LookupSize2]):
                           ilookup[LBDATD], ilookup[LBHRD], ilookup[LBMIND])
     period = end.torelative(timeunits)
     step = period.value/ilookup[LBROW]
-    if verbose:
-        print "TIME STEP (days)", step
+    if args.verbose:
+        print("TIME STEP (days)", step)
     # Step will probably be some integer number of minutes
     step = round(1440*step,4)
-    if verbose:
-        print "TIME STEP (mins)", step
+    if args.verbose:
+        print("TIME STEP (mins)", step)
 
     # ilookup[LBCODE] is 31320 for Gregorian timeseries, 31323 for other calendar
     # rlookup[51] is level, -1 for single or special levels
@@ -129,8 +121,8 @@ for k in range(f.fixhd[FH_LookupSize2]):
     # Where is this format for grid point values defined?
     # Added by routine extra_ts_info
     s = f.wordread((npts+1)*6)
-    x = np.fromstring(s,np.float64).byteswap().reshape(6,npts+1)
-    y = np.fromstring(s,np.int64).byteswap()
+    x = np.frombuffer(s,np.float64).byteswap().reshape(6,npts+1)
+    y = np.frombuffer(s,np.int64).byteswap()
 
     # Need to unpack the first part and then get point values from the
     # last part. This will probably only work when they're separate points
@@ -142,8 +134,30 @@ for k in range(f.fixhd[FH_LookupSize2]):
     startlevs = x[4,1:]
     endlevs   = x[5,1:]
 
+    # Check whether coordinates are set properly for the EG grid
+    # This should be half integer
+    if eg_grid:
+        jlat = (startlats[0] - lat0)/dlat
+        if not np.isclose(jlat-int(jlat), 0.5):
+            print("Warning: Inconsistent lat/lon for EG grid - adjusting")
+            startlats += 0.5*dlat
+            endlats += 0.5*dlat
+            startlons += 0.5*dlon
+            endlons += 0.5*dlon
+
     # Check whether the level is non-zero.
     # Might indicate tiling?
+
+    if args.verbose > 1:
+        # print "X", x
+        print(f"NPTS={len(startlats)}")
+        print("STARTLATS", startlats)
+        print("STARTLONS", startlons)
+        print("STARTLEVS", startlevs)
+        print("ENDLATS", endlats)
+        print("LBVC", ilookup[LBVC], ilookup[LBPLEV])
+        print("ENDLONS", endlons)
+        print("ENDLEVS", endlevs)
 
     # This might not be necessary. Levels seem to be saved as individuals even
     # when specified with a range in the UMUI.
@@ -159,19 +173,19 @@ for k in range(f.fixhd[FH_LookupSize2]):
     # but rather collections of coordinates.
 
     # If it's on hybrid levels, set the real height
-    # Use rlookup[BLEV] to check whether it's on rho or theta. 
+    # Use rlookup[BLEV] to check whether it's on rho or theta.
     # theta levels are in f.levdep[4], rho levels in f.levdep[6]
     if ilookup[LBVC] == 65:
         if abs(f.levdep[4]-rlookup[BLEV]).min() < 1e-2:
             # Index by theta levels. Level 0 is 0 so start at 1
-            startlevs =  f.levdep[4][startlevs.astype(np.int)]
+            startlevs =  f.levdep[4][startlevs.astype(int)]
         elif abs(f.levdep[6]-rlookup[BLEV]).min() < 1e-2:
             # Index by rho levels. Level 0 is first model level so start at 0
-            startlevs =  f.levdep[6][startlevs.astype(np.int)-1]
+            startlevs =  f.levdep[6][startlevs.astype(int)-1]
         else:
-            print "Warning - unexpected vertical levels", ilookup[ITEM_CODE]
-            print rlookup[BLEV], f.levdep[4], f.levdep[6]
-        
+            print("Warning - unexpected vertical levels", ilookup[ITEM_CODE])
+            print(rlookup[BLEV], f.levdep[4], f.levdep[6])
+
     # Use index to accumulate total number of times for each variable
     # This should use item_code because name might not be unique
     # Use var.code
@@ -188,42 +202,39 @@ for k in range(f.fixhd[FH_LookupSize2]):
         var.gridlist.append([tuple(x) for x in np.column_stack((startlats,startlons)).tolist()])
         # var.latlist.append(startlats)
         if ilookup[LBPLEV] == 1: # Tiles
-            var.levlist.append(np.arange(1.,10.))
+            # Has this case ever been tested?
+            raise Exception('TIled time series not supported')
+            # var.levlist.append(np.arange(1.,10.))
         else:
             var.levlist.append(startlevs)
         var.count = ilookup[LBROW]
         var.step = step
         vardict[ilookup[ITEM_CODE]] = var
+        if args.verbose:
+            print("Creating var", ilookup[ITEM_CODE], len(var.gridlist))
     else:
-        vardict[ ilookup[ITEM_CODE]].gridlist.append([tuple(x) for x in np.column_stack((startlats,startlons)).tolist()])
-        vardict[ ilookup[ITEM_CODE]].levlist.append(startlevs)
-        vardict[ ilookup[ITEM_CODE]].count += ilookup[LBROW]
-        # vardict[ITEM_CODE].tlist 
+        vardict[ilookup[ITEM_CODE]].gridlist.append([tuple(x) for x in np.column_stack((startlats,startlons)).tolist()])
+        vardict[ilookup[ITEM_CODE]].levlist.append(startlevs)
+        vardict[ilookup[ITEM_CODE]].count += ilookup[LBROW]
 
-    if verbose:
-        # print "X", x
-        print "STARTLATS", startlats
-        print "STARTLONS", startlons
-        print "STARTLEVS", startlevs
-        print "ENDLATS", endlats
-        print "ENDLONS", endlons
-        print "ENDLEVS", endlevs
+        # vardict[ITEM_CODE].tlist
 
-    if verbose:
-        print "-----------------------------------------------------------"
-        print var.name, var.long_name
-        print f.ilookup[k, :45]
-        print f.rlookup[k, 45:]
+
+    if args.verbose:
+        print("-----------------------------------------------------------")
+        print(var.name, var.long_name)
+        print(f.ilookup[k, :45])
+        print(f.rlookup[k, 45:])
         # Expect lblrec = npts*nrows + npts*9
-        print "Rec size", k, lbnrec, lblrec, npts*nrows + (npts+1)*6
-        print "Start time", ilookup[:5]
-        print "End time", ilookup[6:11]
-        print "Level type", ilookup[LBVC]
-        print "Forecast period", ilookup[LBFT]
-        print "Rows", ilookup[LBROW]
-        print "Data type", ilookup[DATA_TYPE]
-        print "Level", ilookup[LBLEV]
-        print "Pseudo level", ilookup[LBPLEV]
+        print("Rec size", k, lbnrec, lblrec, npts*nrows + (npts+1)*6)
+        print("Start time", ilookup[:5])
+        print("End time", ilookup[6:11])
+        print("Level type", ilookup[LBVC])
+        print("Forecast period", ilookup[LBFT])
+        print("Rows", ilookup[LBROW])
+        print("Data type", ilookup[DATA_TYPE])
+        print("Level", ilookup[LBLEV])
+        print("Pseudo level", ilookup[LBPLEV])
 
 
 
@@ -244,22 +255,22 @@ for k in range(f.fixhd[FH_LookupSize2]):
 # #         vardict[var.code] = var
 
 # Global attributes
-d.history = "%s Created by um_timeseries.py from file %s" % (time.strftime("%Y-%m-%d %H:%M"), ifile)
+d.history = "%s Created by um_timeseries.py from file %s" % (time.strftime("%Y-%m-%d %H:%M"), args.ifile)
 
 # Distinct coordinates
 # Convert lists to tuples so they're hashable.
 ugrid = sorted(list(set([tuple(v.gridlist) for v in vardict.values()])))
 # ulat = sorted(list(set([tuple(v.latlist) for v in vardict.values()])))
 ulev = sorted(list(set([tuple(v.levlist) for v in vardict.values()])))
-if verbose:
-    print "Number of distinct coordinate sets", len(ugrid), len(ulev)
-    print "Unique gridpts", ugrid
+if args.verbose:
+    print("Number of distinct coordinate sets", len(ugrid), len(ulev))
+    print("Unique gridpts", ugrid)
 
 
 for k in range(len(ulev)):
     lev = ulev[k]
-    if verbose:
-        print "LEVLIST", k, lev
+    if args.verbose:
+        print("LEVLIST", k, lev)
     if not (max(lev) == min(lev) == 1):
         dname = "lev_%d" % k
         d.createDimension(dname,len(lev))
@@ -296,7 +307,7 @@ for k in range(len(ugrid)):
     latsvar[:] = np.array(lat).astype(np.float32)
 
 # Assume a single time index per file.
-# Check that each variable has the same time axis.    
+# Check that each variable has the same time axis.
 # Make a list of the times
 times = [v.count for v in vardict.values()]
 tset = set(times) # To get unique times
@@ -341,12 +352,12 @@ for vcode in vardict:
         # Need to generalise this properly
         vname = vname + "_2"
     if levdim:
-        if verbose:
-            print "Creating %s with %s, %s, %s" % (vname, timedim, levdim, griddim)
+        if args.verbose:
+            print("Creating %s with %s, %s, %s" % (vname, timedim, levdim, griddim))
         newvar = d.createVariable(vname, "f", (timedim, levdim, griddim))
     else:
-        if verbose:
-            print "Creating %s (%d) with %s, %s" % (vname, vcode, timedim, griddim)
+        if args.verbose:
+            print("Creating %s (%d) with %s, %s" % (vname, vcode, timedim, griddim))
         newvar = d.createVariable(vname, "f", (timedim, griddim))
     newvar.long_name = var.long_name
     if var.units:
@@ -358,7 +369,7 @@ for vcode in vardict:
     filevars[vcode] = newvar
     # This is a transposed list because that's the order it's needed in later
     dims[vcode] = (len(var.gridlist), len(var.levlist))
-        
+
 countvar = {}
 for k in range(f.fixhd[FH_LookupSize2]):
     ilookup = f.ilookup[k]
@@ -375,14 +386,14 @@ for k in range(f.fixhd[FH_LookupSize2]):
 # Need to apply this everywhere, also for reading lats and lons.
 ##     if ilookup[LBPACK] == 0:
 ##         s = f.wordread(npts*nrows)
-##         data = np.reshape( np.fromstring(s, np.float64).byteswap(), [nrows, npts])
+##         data = np.reshape( np.frombuffer(s, np.float64).byteswap(), [nrows, npts])
 ##     elif ilookup[LBPACK] == 2:
 ##         s = f.wordread((npts*nrows)//2)
-##         data = np.reshape( np.fromstring(s, np.float32).byteswap(), [nrows, npts])
+##         data = np.reshape( np.frombuffer(s, np.float32).byteswap(), [nrows, npts])
 ##     else:
 ##         raise "Unsupported packing type %d" % ilookup[LBPACK]
     s = f.wordread(npts*nrows)
-    data = np.reshape( np.fromstring(s, np.float64).byteswap(), [nrows, npts])
+    data = np.reshape( np.frombuffer(s, np.float64).byteswap(), [nrows, npts])
 
     item_code = ilookup[ITEM_CODE]
     try:
