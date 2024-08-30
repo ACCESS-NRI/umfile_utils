@@ -15,12 +15,14 @@
 # Martin Dix martin.dix@csiro.au
 
 import numpy as np
+import collections
 import argparse, sys, time
-import stashvar
+import stashvar_cmip6 as stashvar
 from um_fileheaders import *
 import umfile
 import netCDF4
 import cdtime
+import warnings
 
 parser = argparse.ArgumentParser(description="Convert UM timeseries file to netCDF.")
 parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
@@ -50,8 +52,10 @@ lat0 = f.realhead[RC_FirstLat]
 
 if f.fixhd[FH_CalendarType] == 1:
     cdtime.DefaultCalendar = cdtime.GregorianCalendar
+    calendar = "proleptic_gregorian"
 elif f.fixhd[FH_CalendarType] == 2:
     cdtime.DefaultCalendar = cdtime.Calendar360
+    calendar = "360_day"
 else:
     raise Exception("Unsupported calendar")
 
@@ -139,7 +143,7 @@ for k in range(f.fixhd[FH_LookupSize2]):
     if eg_grid:
         jlat = (startlats[0] - lat0)/dlat
         if not np.isclose(jlat-int(jlat), 0.5):
-            print("Warning: Inconsistent lat/lon for EG grid - adjusting")
+            warnings.warn("Inconsistent lat/lon for EG grid - adjusting")
             startlats += 0.5*dlat
             endlats += 0.5*dlat
             startlons += 0.5*dlon
@@ -148,22 +152,14 @@ for k in range(f.fixhd[FH_LookupSize2]):
     # Check whether the level is non-zero.
     # Might indicate tiling?
 
-    if args.verbose > 1:
-        # print "X", x
-        print(f"NPTS={len(startlats)}")
-        print("STARTLATS", startlats)
-        print("STARTLONS", startlons)
-        print("STARTLEVS", startlevs)
-        print("ENDLATS", endlats)
-        print("LBVC", ilookup[LBVC], ilookup[LBPLEV])
-        print("ENDLONS", endlons)
-        print("ENDLEVS", endlevs)
-
     # This might not be necessary. Levels seem to be saved as individuals even
     # when specified with a range in the UMUI.
     # Perhaps not when a box is specified?
-    if not np.allclose(startlats,endlats) or not np.allclose(startlons,endlons) \
-           or not np.allclose(startlevs, endlevs) :
+    if not np.allclose(startlats,endlats) or not np.allclose(startlons,endlons):
+        print("STARTLATS", startlats)
+        print("ENDLATS", endlats)
+        print("STARTLONS", startlons)
+        print("ENDLONS", endlons)
         raise Exception("Conversion doesn't support timeseries with regions at the moment")
     # If there are multiple usage domains with different sets of points
     # this code probably won't work.
@@ -185,6 +181,9 @@ for k in range(f.fixhd[FH_LookupSize2]):
         else:
             print("Warning - unexpected vertical levels", ilookup[ITEM_CODE])
             print(rlookup[BLEV], f.levdep[4], f.levdep[6])
+    # Pseudo level data
+    if ilookup[LBPLEV] > 0:
+        startlevs = ilookup[LBPLEV]
 
     # Use index to accumulate total number of times for each variable
     # This should use item_code because name might not be unique
@@ -200,15 +199,10 @@ for k in range(f.fixhd[FH_LookupSize2]):
         var.levlist = umfile.UniqueList()
         # Need tuple so can use set later
         var.gridlist.append([tuple(x) for x in np.column_stack((startlats,startlons)).tolist()])
-        # var.latlist.append(startlats)
-        if ilookup[LBPLEV] == 1: # Tiles
-            # Has this case ever been tested?
-            raise Exception('TIled time series not supported')
-            # var.levlist.append(np.arange(1.,10.))
-        else:
-            var.levlist.append(startlevs)
+        var.levlist.append(startlevs)
         var.count = ilookup[LBROW]
         var.step = step
+        var.pseudo = ilookup[LBPLEV] > 0
         vardict[ilookup[ITEM_CODE]] = var
         if args.verbose:
             print("Creating var", ilookup[ITEM_CODE], len(var.gridlist))
@@ -217,8 +211,18 @@ for k in range(f.fixhd[FH_LookupSize2]):
         vardict[ilookup[ITEM_CODE]].levlist.append(startlevs)
         vardict[ilookup[ITEM_CODE]].count += ilookup[LBROW]
 
-        # vardict[ITEM_CODE].tlist
+        # vardict[ITEM_CODE].
 
+    if args.verbose > 1:
+        # print "X", x
+        print(f"NPTS={len(startlats)}")
+        print("STARTLATS", startlats)
+        print("STARTLONS", startlons)
+        print("STARTLEVS", startlevs)
+        print("ENDLATS", endlats)
+        print("LBVC", ilookup[LBVC], ilookup[LBPLEV])
+        print("ENDLONS", endlons)
+        print("ENDLEVS", endlevs)
 
     if args.verbose:
         print("-----------------------------------------------------------")
@@ -308,6 +312,13 @@ for k in range(len(ugrid)):
 
 # Assume a single time index per file.
 # Check that each variable has the same time axis.
+
+# Variables on pseudo-levels are saved as separate records due to a UM limitation
+# Correct the time count
+for v in vardict.values():
+    if v.pseudo:
+        v.count = v.count // len(v.levlist)
+
 # Make a list of the times
 times = [v.count for v in vardict.values()]
 tset = set(times) # To get unique times
@@ -327,6 +338,7 @@ for k, nt in enumerate(tlist):
     timedim = d.createDimension(name, nt)
     timevar = d.createVariable(name, "f", (name,))
     timevar.units = timeunits
+    timevar.calendar = calendar
     tval = cdtime.reltime(0,timeunits)
     for t in range(nt):
         timevar[t] = tval.value
@@ -366,19 +378,24 @@ for vcode in vardict:
         newvar.standard_name = var.standard_name
     newvar.longitude = "longitude_%d" % gridd
     newvar.latitude = "latitude_%d" % gridd
+    section = var.code // 1000
+    item = var.code % 1000
+    newvar.um_stash_source = f'm01s{section:02d}i{item:03d}'
     filevars[vcode] = newvar
     # This is a transposed list because that's the order it's needed in later
     dims[vcode] = (len(var.gridlist), len(var.levlist))
 
-countvar = {}
-for k in range(f.fixhd[FH_LookupSize2]):
-    ilookup = f.ilookup[k]
+countvar = collections.defaultdict(int)
+for i in range(f.fixhd[FH_LookupSize2]):
+    ilookup = f.ilookup[i]
     lblrec = ilookup[LBLREC]
     lbegin = ilookup[LBEGIN] # lbegin is offset from start
     lbnrec = ilookup[LBNREC] # Actual size
+    item_code = ilookup[ITEM_CODE]
+
     if lbegin == -99:
         break
-    var = stashvar.StashVar(ilookup[ITEM_CODE],ilookup[MODEL_CODE])
+    var = stashvar.StashVar(item_code,ilookup[MODEL_CODE])
 
     npts = ilookup[LBNPT]
     nrows = ilookup[LBROW]
@@ -393,15 +410,12 @@ for k in range(f.fixhd[FH_LookupSize2]):
 ##     else:
 ##         raise "Unsupported packing type %d" % ilookup[LBPACK]
     s = f.wordread(npts*nrows)
-    data = np.reshape( np.frombuffer(s, np.float64).byteswap(), [nrows, npts])
+    data = np.reshape(np.frombuffer(s, np.float64).byteswap(), [nrows, npts])
+    if args.verbose:
+        print("DATA", data)
 
-    item_code = ilookup[ITEM_CODE]
-    try:
-        start = countvar[item_code]
-        countvar[item_code] = countvar[item_code] + ilookup[LBROW]
-    except KeyError:
-        start = 0
-        countvar[item_code] = ilookup[LBROW]
+    start = countvar[item_code]
+    countvar[item_code] += ilookup[LBROW]
 
     # Shouldn't need to keep doing this
     #var = stashvar.StashVar(ilookup[ITEM_CODE], ilookup[MODEL_CODE])
@@ -409,20 +423,25 @@ for k in range(f.fixhd[FH_LookupSize2]):
     # Data ranges over levels first, then grid points
 #     print "SHAPES", data.shape, start, ilookup[LBROW]
 #     print "DATA", data[0]
+
+    # When is shape[0] not 1 - multiple gridpoints?
     for k in range(data.shape[0]):
         tmp = data[k]
-        tmp.shape = dims[ilookup[ITEM_CODE]]
-        tmp = tmp.transpose()
-        # if k == 0:
-            # print "Shapes"
-            # print tmp.shape, filevars[ilookup[ITEM_CODE]][start+k].shape
-            # print tmp
-        if len(filevars[ilookup[ITEM_CODE]].shape) == 3:
-            # Level dimension
-            filevars[ilookup[ITEM_CODE]][start+k] = tmp.astype(np.float32)
+        # Special handling of pseudo-levels
+        if vardict[item_code].pseudo:
+            nlev = filevars[item_code].shape[1]
+            tstart = start // nlev
+            lstart = start % nlev
+            filevars[item_code][tstart,lstart] = tmp.astype(np.float32)[0]
         else:
-            # tmp has a trivial level dimension
-            filevars[ilookup[ITEM_CODE]][start+k] = tmp.astype(np.float32)[0]
+            tmp.shape = dims[item_code]
+            tmp = tmp.transpose()
+            if len(filevars[item_code].shape) == 3:
+                # Level dimension
+                filevars[item_code][start+k] = tmp.astype(np.float32)
+            else:
+                # tmp has a trivial level dimension
+                filevars[item_code][start+k] = tmp.astype(np.float32)[0]
 
 
 d.close()
