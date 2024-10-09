@@ -230,6 +230,8 @@ def process(infile, outfile, args):
     # Use mule to get the model levels to help with dimension naming
     # mule 2020.01.1 doesn't handle pathlib Paths properly
     ff = mule.load_umfile(str(infile))
+    if isinstance(ff, mule.ancil.AncilFile):
+        raise Exception('Ancillary files are not supported')
     if ff.fixed_length_header.grid_staggering == 6:
         grid_type = 'EG'
     elif ff.fixed_length_header.grid_staggering == 3:
