@@ -10,7 +10,11 @@ from __future__ import print_function, division
 import numpy as np
 import argparse, sys
 from um_fileheaders import *
-import umfile, stashvar
+import umfile
+try:
+    import stashvar
+except ModuleNotFoundError:
+    import stashvar_cmip6 as stashvar
 
 parser = argparse.ArgumentParser(description="Dump contents of a UM fieldsfile")
 parser.add_argument('-H', dest='header_only', action='store_true',
@@ -21,6 +25,8 @@ parser.add_argument('-s', dest='short', action='store_true',
                 default=False, help='short list of fields')
 parser.add_argument('-S', dest='summary', action='store_true',
                 default=False, help='summary similar to model list of expected fields')
+parser.add_argument('--nodata', dest='nodata', action='store_true',
+                default=False, help='Skip data summary')
 parser.add_argument('infile', help='Input file')
 
 args = parser.parse_args()
@@ -34,7 +40,7 @@ if not f.fieldsfile:
 f.readheader()
 
 def getlevel(ilookup):
-    if ilookup[LBPLEV] != 0:
+    if ilookup[LBPLEV] > 0:
         # Snow variables on tiles have this as 1000*tile_index + layer
         # 1001, 2001, ... 1002, 2002, ...
         # Model treats these as a single variable
@@ -118,17 +124,16 @@ if not args.header_only:
         npts = ilookup[LBNPT]
         nrows = ilookup[LBROW]
 
+        if args.nodata:
+            continue
         try:
             data = f.readfld(k)
 
             # Sample values
             print("Range", data.min(), data.max())
             if len(data.shape)==2:
-                print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[0,0], data[0,npts//4], data[0,npts//2], data[0,3*npts//4], data[0,-1]))
-                print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[nrows//4,0], data[nrows//4,npts//4], data[nrows//4,npts//2], data[nrows//4,3*npts//4], data[nrows//4,-1]))
-                print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[nrows//2,0], data[nrows//2,npts//4], data[nrows//2,npts//2], data[nrows//2,3*npts//4], data[nrows//2,-1]))
-                print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[3*nrows//4,0], data[3*nrows//4,npts//4], data[3*nrows//4,npts//2], data[3*nrows//4,3*npts//4], data[3*nrows//4,-1]))
-                print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[-1,0], data[-1,npts//4], data[-1,npts//2], data[-1,3*npts//4], data[-1,-1]))
+                for j in [0, nrows//4, nrows//2, 3*nrows//4, -1]:
+                    print("%12.6g %12.6g %12.6g %12.6g %12.6g" % (data[j,0], data[j,npts//4], data[j,npts//2], data[j,3*npts//4], data[j,-1]))
         except umfile.packerr:
             print("Can't handle packed data")
 
