@@ -29,6 +29,8 @@ parser.add_argument('-i', dest='ifile', required=True, help='Input UM file')
 parser.add_argument('-o', dest='ofile', required=True, help='Output netCDF file')
 parser.add_argument('-v', '--verbose', dest='verbose',
                     action='count', default=0, help='verbose output (-vv for extra verbose)')
+parser.add_argument('--simple', dest='simple', action='store_true',
+                default=False, help="Use a simple names of form fld_s01i123.")
 args = parser.parse_args()
 
 
@@ -334,7 +336,10 @@ if len(steplist) != len(tlist):
     raise Exception("Inconsistency in lengths of time and step lists %d, %d" % (len(tlist), len(steplist)))
 
 for k, nt in enumerate(tlist):
-    name = "time_%d" % k
+    if len(tlist) > 1:
+        name = "time_%d" % k
+    else:
+        name = "time"
     timedim = d.createDimension(name, nt)
     timevar = d.createVariable(name, "f", (name,))
     timevar.units = timeunits
@@ -351,9 +356,15 @@ filevars = {}
 dims = {}
 for vcode in vardict:
     var = vardict[vcode]
-    vname = var.name
+    if args.simple:
+        vname = f'fld_s{var.code//1000:02d}i{var.code%1000:02d}'
+    else:
+        vname = var.name
     # Match all the dimensions
-    timedim = "time_%d" % tlist.index(var.count)
+    if len(tlist) > 1:
+        timedim = "time_%d" % tlist.index(var.count)
+    else:
+        timedim = "time"
     if min(var.levlist) == max(var.levlist) == 1:
         levdim = None
     else:
