@@ -6,7 +6,7 @@
 
 # Martin Dix martin.dix@csiro.au
 
-import argparse 
+import argparse
 import umfile
 from um_fileheaders import *
 from numpy.random import MT19937, RandomState, SeedSequence
@@ -21,7 +21,7 @@ parser.add_argument('ifile', help='Input file (modified in place)')
 args = parser.parse_args()
 
 if args.seed >= 0:
-    rs = RandomState(MT19937(SeedSequence(args.seed)))
+    rs = RandomState(args.seed)
 else:
     raise Exception('Seed must be positive')
 
