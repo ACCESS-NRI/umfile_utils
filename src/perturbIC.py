@@ -17,7 +17,7 @@
 import argparse
 import umfile
 from um_fileheaders import *
-from numpy.random import MT19937, RandomState, SeedSequence
+from numpy.random import PCG64, Generator
 
 
 def parse_args():
@@ -30,7 +30,8 @@ def parse_args():
 
     Returns
     ----------
-    FIXME 
+    args_parsed : ArguementParser object
+        Contains the arguments from the command line that can be access with their dest
     """
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
@@ -45,11 +46,11 @@ def parse_args():
 
 def set_seed(args):
     """
-    This function sets the seed if any for the random generator
+    This function sets the seed, if any, for the random generator
 
     Parameters
     ----------
-    args : string
+    args : ArgumentParser object
            The argument parser object with amplitude, seed from commandline
 
     Returns
@@ -59,31 +60,28 @@ def set_seed(args):
     Exception
     """
     if args.seed == None:
-        return RandomState()
+        return Generator(PCG64())
 
     elif args.seed >=0:
-        rs = RandomState(args.seed)
-        return rs
-
+        return Generator(PCG64(args.seed))
     else:
         raise Exception('Seed must be positive')
 
 def is_inplace(args):
     """
-    FIXME description.
+    This provides an outline for editing if a new file should be 
+    created
 
     Parameters
     ----------
+    args: ArgumentParser object
+         The argument parser object with output file name
 
     Returns
     ----------
-    FIXME
-    f - string - newfile name
+    Boolean - returns False for editing in place and True if a new 
+        outfile has been created
 
-
-    FIXME - Questions
-    Should copy a umfields fiel be a function that goes in UM files
-    Otherwise I could implement this with subprocess
     subprocess.run(['cp', original_file, new_file])
     """
 
@@ -126,45 +124,56 @@ def is_end_of_file(f, k, data_limit):
     ----------
     f : umFile Object 
         This is the fields file that holds the restart data 
-    k : int 
-        FIXME
+    
+    k : int
+        This integer is indexing the metadata in the fields file
+
+    data_limit : int
+        This int is a placeholder indicating the end of the data
     Returns
     ----------
-    boolean
-    
-    FIXME Description of returned object
+    boolean - True if the end of the data is reached and False everwhere else
+
     """
     ilookup = f.ilookup[k]
     if ilookup[LBEGIN] == data_limit:
         return True
     else:
         return False
+
 def if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame):
     """
     This function checks to make sure that the correct field is used (surface temperature)
-    FIXME - remove the intergers and make them vairables
 
     Parameters
-    ---------   -
-    ilookup : FIXME
+    ----------
+    ilookup : 
     k : int
-           FIXME
+            This integer is indexing the metadata in the fields file
+
     f : umFile Object
-           FIXME
-    perturb: Array 
+           Holds the entire umfile including metadata and data
+    
+    perturb : Array 
         Holds the random perturbation and has shape nlon x nlat  
+    
+    surface_temp_item_code : int
+        This integer represents the item code for surface temperature or theata
+    
+    endgame : int
+        This integer represents the FIXME
 
     Returns
     ----------
-    boolean
-    Array
-    """
+    boolean - True if this is the correct data to be perturbed. False for all other item codes
+    Array - If True the perturbation is added to the data array
 
+    """
     if ilookup[ITEM_CODE] in (surface_temp_item_code,endgame):
 
         a = f.readfld(k)
         a += perturb
-
+        
         return True, a
 
     else:
@@ -173,24 +182,23 @@ def if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame):
 
 def main():
     """
-    This function executes all the steps to add the perturbation. The variables should all be defined here
-    #FIXME Need to define numbers as variables
-
-    Returns
-    ----------
-    FIXME
+    This function executes all the steps to add the perturbation.The results if saving the perturbation 
+    in the restart file. 
     """
 
+    #Define all the variables  
     data_limit = -99
     surface_temp_item_code = 4
     endgame = 388
 
+    #Obtain the arguements from the commandline
+    #Then set the seed if there is one
     args = parse_args()
     random_obj = set_seed(args)
 
     f = umfile.UMFile(args.ifile, 'r+')
 
-    # Set up theta perturbation.
+    # The definitions of the grid
     nlon = f.inthead[IC_XLen]
     nlat = f.inthead[IC_YLen]
 
@@ -199,10 +207,13 @@ def main():
 
     for k in range(f.fixhd[FH_LookupSize2]):
 
+        #Check to make sure not at the edge of the data
         if is_end_of_file(f, k, data_limit):
             break
 
         ilookup = f.ilookup[k]
+
+        #Find the correct field and add perturbation
         is_perturb, a = if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame)
         if is_perturb:
 
@@ -213,4 +224,4 @@ def main():
 
 if __name__== "__main__":
 
-    main()                                                                                                                                                          210,1         Bot
+    main                                                                                                                                                        210,1         Bot
