@@ -13,7 +13,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
 
@@ -40,9 +40,7 @@ jobs:
 
       - name: Run tests
         shell: bash -l {0}
-        run: coverage run -m --source=umfile_utils
-
-    umfile_utils
+        run: coverage run -m --source=umfile_utils pytest
       
       - name: Generate coverage report
         shell: bash -l {0}
