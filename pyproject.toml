@@ -7,4 +7,27 @@ name = "umfile_utils"
 version = "0.1.0"
 description = "Your project description here"
 authors = [{name = "Your Name", email = "your.email@example.com"}]
-dependencies = [pytest, numpy, unittest, sys]
+dependencies = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "pytest", 
+    "numpy", 
+    "unittest", 
+    "sys"]
