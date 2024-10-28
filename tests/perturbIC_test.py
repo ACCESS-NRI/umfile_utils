@@ -6,7 +6,6 @@ import numpy as np
 import numpy.random as rs
 
 
-
 @pytest.fixture
 def mock_command_line():
     """
@@ -42,17 +41,13 @@ def mock_metadata():
     Outputs
         list - Command line arguements
     """
-    list_len = 31
-    mock_data = Mock()
-    mock_data.ilookup = [np.ones(list_len)*10,
-            np.ones(list_len)*11,
-            np.ones(list_len)*-99]
-    metadata_index = 1
+
+    metadata_index_false = 43
+    metadata_index_true = -99
     end_of_data = -99
 
-    return mock_data, metadata_index, end_of_data
+    return metadata_index_false,  metadata_index_true, end_of_data
 
-#Test the Imports may not be necessary
 def test_parse_args(monkeypatch, mock_command_line):
     """
     This function tests the parse_args function with the fake commandline arguments
@@ -69,16 +64,6 @@ def test_parse_args(monkeypatch, mock_command_line):
     assert args.seed == 23452
     assert args.output == "restart_dump_copy_perturb.astart"
 
-#Test checking the seed
-#def test_set_seed(args):
-#Not sure if we need test but the conditionals in a function is nice. 
-
-
-#Test creating output file
-#def test_creating_output_file():
-
-
-#Test the random generator
 def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
     """
     This function tests the create_perturbation function with the fake commandline arguments
@@ -103,17 +88,14 @@ def test_is_end_of_file_keep_going(mock_metadata):
     Inputs
         fixture - A fake list of arrays and a fake index
     Outputs 
-                                                         The results of assertion tests. 
+        The results of assertion tests. 
     """
 
-    mock_data, metadata_index,end_of_data =  mock_metadata
-    assert is_end_of_file(mock_data, metadata_index, end_of_data) == False
-    assert is_end_of_file(mock_data, metadata_index+1, end_of_data) == True
+    metadata_index_false, metadata_index_true,end_of_data =  mock_metadata
+    assert is_end_of_file(metadata_index_false, end_of_data) == False
+    assert is_end_of_file(metadata_index_true, end_of_data) == True
 
-
-#Test that the perturbation has been applied
 def test_applying_perturbation(mock_perturbation):
-
     """
     This function tests the addition of the perturbation to the correct field 
     This function in the perturbIC.py is written to both check the itemcode when 
@@ -138,19 +120,16 @@ def test_applying_perturbation(mock_perturbation):
     shape = (nlat, nlon)  # Example shape of 3 rows and 4 columns
     mock_data = Mock()
     mock_data.readfld.return_value = np.ones(shape)
-    metadata_index = 0
+    metadata_index = 4
     surface_temp_item_code = 4
     endgame = 388
-
-    #Create the ilookup method and place a 4 somewhere in it
-    mock_data.ilookup = np.arange(0,52)
-    mock_data.ilookup[41] = 4
+    k = 0
 
     #Run the fucntion to get the outputs
-    is_perturb,a = if_perturb(mock_data.ilookup,metadata_index,mock_data,perturb,surface_temp_item_code,endgame)
+    is_perturb,a = if_perturb(metadata_index,k,mock_data,perturb,surface_temp_item_code,endgame)
 
     #Testing if the perturb conditional works and if the resulting array is correct
     testing_a = np.round((a - perturb) / np.ones(shape),0)
     assert is_perturb == True
     assert a.shape == (nlat, nlon)
-    assert testing_a.all() == 1.0
+    assert testing_a.all() == 1.
