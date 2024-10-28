@@ -15,8 +15,8 @@
 # Martin Dix martin.dix@csiro.au
 
 import argparse
-import umfile
-from um_fileheaders import *
+import src.umfile
+from src.um_fileheaders import *
 from numpy.random import PCG64, Generator
 
 
