@@ -115,7 +115,7 @@ def create_perturbation(args, rs, nlon, nlat):
     perturbation[-1] = 0
     return perturbation
 
-def is_end_of_file(f, k, data_limit):
+def is_end_of_file(ilookup_table,data_limit):
     """
     This function checks to see if there is data associated with the metadata
 
@@ -134,19 +134,19 @@ def is_end_of_file(f, k, data_limit):
     boolean - True if the end of the data is reached and False everwhere else
 
     """
-    ilookup = f.ilookup[k]
-    if ilookup[LBEGIN] == data_limit:
+
+    if ilookup_table == data_limit:
         return True
     else:
         return False
 
-def if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame):
+def if_perturb(ilookup_code,k,f,perturb,surface_temp_item_code,endgame):
     """
     This function checks to make sure that the correct field is used (surface temperature)
 
     Parameters
     ----------
-    ilookup : 
+    ilookup : FIXME
     k : int
             This integer is indexing the metadata in the fields file
 
@@ -168,17 +168,17 @@ def if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame):
     Array - If True the perturbation is added to the data array
 
     """
-    if ilookup[ITEM_CODE] in (surface_temp_item_code,endgame):
+    if ilookup_code in (surface_temp_item_code,endgame):
 
         a = f.readfld(k)
         a += perturb
-        
+
         return True, a
 
     else:
 
         return False, None
-
+        
 def main():
     """
     This function executes all the steps to add the perturbation.The results if saving the perturbation 
@@ -206,14 +206,12 @@ def main():
 
     for k in range(f.fixhd[FH_LookupSize2]):
 
-        #Check to make sure not at the edge of the data
-        if is_end_of_file(f, k, data_limit):
-            break
-
         ilookup = f.ilookup[k]
 
-        #Find the correct field and add perturbation
-        is_perturb, a = if_perturb(ilookup,k,f,perturb,surface_temp_item_code,endgame)
+        if is_end_of_file(ilookup[LBEGIN], data_limit):
+            break
+
+        is_perturb, a = if_perturb(ilookup[ITEM_CODE],k,f,perturb,surface_temp_item_code,endgame)
         if is_perturb:
 
             f.writefld(a,k)
