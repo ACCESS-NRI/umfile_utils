@@ -32,7 +32,7 @@ jobs:
 
       - name: Install source
         shell: bash -l {0}
-        run: python -m pip install .
+        run: python -m pip install ./src
 
       - name: List installed packages
         shell: bash -l {0}
@@ -40,7 +40,7 @@ jobs:
 
       - name: Run tests
         shell: bash -l {0}
-        run: coverage run -m --source=umfile_utils pytest
+        run: coverage run -m --source=src pytest
       
       - name: Generate coverage report
         shell: bash -l {0}
