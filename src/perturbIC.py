@@ -16,7 +16,7 @@
 
 import argparse
 import src.umfile
-from src.um_fileheaders import *
+from .um_fileheaders import *
 from numpy.random import PCG64, Generator
 
 def parse_args():
