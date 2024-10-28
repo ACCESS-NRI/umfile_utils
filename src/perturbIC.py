@@ -7,7 +7,7 @@
 # Martin Dix martin.dix@csiro.au
 
 import argparse
-import src.umfile
+import umfile
 from um_fileheaders import *
 from numpy.random import MT19937, RandomState, SeedSequence
 
