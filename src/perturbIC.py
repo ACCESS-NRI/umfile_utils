@@ -8,7 +8,7 @@
 
 import argparse
 import src.umfile
-from src.um_fileheaders import *
+from um_fileheaders import *
 from numpy.random import MT19937, RandomState, SeedSequence
 
 parser = argparse.ArgumentParser(description="Perturb UM initial dump")
