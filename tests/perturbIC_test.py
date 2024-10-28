@@ -54,7 +54,7 @@ def mock_metadata():
 
 #Test the Imports may not be necessary
 def test_parse_args(monkeypatch, mock_command_line):
-        """
+    """
     This function tests the parse_args function with the fake commandline arguments
     Inputs
         fixture - A class of helpful methods for mock data 
