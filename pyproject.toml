@@ -1,10 +1,26 @@
-[build-system]
-requires = ["setuptools >= 61.0.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "umfile_utils"
+name = "umfile_test"
 version = "0.1.0"
-description = "Your project description here"
-authors = [{name = "Your Name", email = "your.email@example.com"}]
-dependencies = [pytest, numpy, unittest, sys]
+authors = [
+    { name = "ACCESS-NRI" },
+]
+description = "Intake catalog managed by ACCESS-NRI and associated tools"
+readme = "README.rst"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "cftime",
+    "ecgtools>=2023.7.13",
+    "intake==0.7.0",
+    "intake-dataframe-catalog>=0.2.4",
+    "intake-esm>=2023.11.10",
+    "jsonschema",
+    "pooch",
+    "xarray",
+]
