@@ -19,7 +19,6 @@ import src.umfile
 from src.um_fileheaders import *
 from numpy.random import PCG64, Generator
 
-
 def parse_args():
     """
     This function parses the arguments from the command line
