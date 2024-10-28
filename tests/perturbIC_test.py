@@ -54,7 +54,7 @@ def mock_metadata():
 
 #Test the Imports may not be necessary
 def test_parse_args(monkeypatch, mock_command_line):
-    """
+        """
     This function tests the parse_args function with the fake commandline arguments
     Inputs
         fixture - A class of helpful methods for mock data 
@@ -103,15 +103,13 @@ def test_is_end_of_file_keep_going(mock_metadata):
     Inputs
         fixture - A fake list of arrays and a fake index
     Outputs 
-                                                         The results of assertion tests. 
+        The results of assertion tests. 
     """
 
     mock_data, metadata_index,end_of_data =  mock_metadata
     assert is_end_of_file(mock_data, metadata_index, end_of_data) == False
     assert is_end_of_file(mock_data, metadata_index+1, end_of_data) == True
-
-
-#Test that the perturbation has been applied
+    
 def test_applying_perturbation(mock_perturbation):
 
     """
@@ -153,4 +151,4 @@ def test_applying_perturbation(mock_perturbation):
     testing_a = np.round((a - perturb) / np.ones(shape),0)
     assert is_perturb == True
     assert a.shape == (nlat, nlon)
-    assert testing_a.all() == 1.0
+    assert testing_a.all() == 1.
