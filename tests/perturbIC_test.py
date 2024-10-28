@@ -1,6 +1,6 @@
 import pytest
 import sys
-from perturbIC import parse_args, set_seed, create_perturbation, is_end_of_file,  if_perturb
+from src.perturbIC import parse_args, set_seed, create_perturbation, is_end_of_file,  if_perturb
 from unittest.mock import Mock
 import numpy as np
 import numpy.random as rs
