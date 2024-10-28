@@ -17,7 +17,7 @@ jobs:
         python-version: ["3.10", "3.11"]
 
     steps:
-      - name: Checkout source
+      - name: Checkout Repository
         uses: actions/checkout@v4.2.1
 
       - name: Setup conda environment
@@ -26,7 +26,6 @@ jobs:
           miniconda-version: "latest"
           python-version: ${{ matrix.python-version }}
           environment-file: ci/environment-${{ matrix.python-version }}.yml
-          activate-environment: src
           auto-activate-base: false
 
       - name: Install source
@@ -39,7 +38,7 @@ jobs:
 
       - name: Run tests
         shell: bash -l {0}
-        run: coverage run -m --source=src pytest
+        run: pytest tests/
       
       - name: Generate coverage report
         shell: bash -l {0}
