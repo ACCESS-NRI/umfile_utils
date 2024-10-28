@@ -224,4 +224,4 @@ def main():
 
 if __name__== "__main__":
 
-    main                                                                                                                                                        210,1         Bot
+    main()
