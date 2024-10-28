@@ -153,4 +153,4 @@ def test_applying_perturbation(mock_perturbation):
     testing_a = np.round((a - perturb) / np.ones(shape),0)
     assert is_perturb == True
     assert a.shape == (nlat, nlon)
-    assert testing_a.all() == 1.                                                                                                              157,0-1       Bot
+    assert testing_a.all() == 1.0
