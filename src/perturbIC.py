@@ -15,8 +15,8 @@
 # Martin Dix martin.dix@csiro.au
 
 import argparse
-import src.umfile
-import src.um_fileheaders
+import umfile
+import um_fileheaders
 from numpy.random import PCG64, Generator
 
 def parse_args():
