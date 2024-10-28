@@ -15,10 +15,9 @@
 # Martin Dix martin.dix@csiro.au
 
 import argparse
-import umfile
-from um_fileheaders import *
+import src.umfile
+import src.um_fileheaders
 from numpy.random import PCG64, Generator
-
 
 def parse_args():
     """
@@ -224,4 +223,4 @@ def main():
 
 if __name__== "__main__":
 
-    main                                                                                                                                                        210,1         Bot
+    main()
