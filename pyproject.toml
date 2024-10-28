@@ -26,8 +26,5 @@ dependencies = [
     "build",
     "dist",
     "node_modules",
-    "venv",
-    "pytest", 
-    "numpy", 
-    "unittest", 
-    "sys"]
+    "venv"
+]
