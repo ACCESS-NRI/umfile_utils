@@ -1,5 +1,6 @@
 [project]
 name = "umfile_test"
+version = "0.1.0"
 authors = [
     { name = "ACCESS-NRI" },
 ]
