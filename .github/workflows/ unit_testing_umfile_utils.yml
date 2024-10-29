@@ -38,7 +38,7 @@ jobs:
 
       - name: Run tests
         shell: bash -l {0}
-        run: pytest tests/
+        run: coverage run -m pytest tests/
       
       - name: Generate coverage report
         shell: bash -l {0}
