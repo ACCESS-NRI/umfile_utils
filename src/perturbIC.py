@@ -6,18 +6,32 @@
 
 # Martin Dix martin.dix@csiro.au
 
-#!/usr/bin/env python
-
-# Apply a perturbation to initial condition.
-# Note that this works in place.
-# For ENDGAME perturb thetavd as well if it's present
-
-# Martin Dix martin.dix@csiro.au
-
 import argparse
 import umfile
-import um_fileheaders
+from um_fileheaders import *
 from numpy.random import PCG64, Generator
+import mule
+
+
+class SetPerturbOperator(mule.DataOperator):
+
+    """
+    This class sets up an object that can add the perturbation
+    to the field.
+    """
+
+    def __init__(self, perturb):
+
+        self.perturb = perturb
+    def new_field(self, source_field):
+        """ This function create a new field obejct """
+        return source_field.copy()
+    def transform(self, source_field, new_field):
+        """ Performs the data manipulation """
+
+        data = source_field.get_data()
+
+        return data + self.perturb
 
 def parse_args():
     """
@@ -39,7 +53,7 @@ def parse_args():
         help = 'Random number seed (must be non-negative integer)')
     parser.add_argument('-o', dest='output', type=str, default=None,
         help = 'Output file (if none given modified in place)')
-    parser.add_argument('ifile', help='Input file (modified in place)')
+parser.add_argument('ifile', help='Input file (modified in place)')
     args_parsed = parser.parse_args()
     return args_parsed
 
@@ -63,6 +77,7 @@ def set_seed(args):
 
     elif args.seed >=0:
         return Generator(PCG64(args.seed))
+
     else:
         raise Exception('Seed must be positive')
 
@@ -178,7 +193,7 @@ def if_perturb(ilookup_code,k,f,perturb,surface_temp_item_code,endgame):
     else:
 
         return False, None
-        
+
 def main():
     """
     This function executes all the steps to add the perturbation.The results if saving the perturbation 
@@ -189,34 +204,37 @@ def main():
     data_limit = -99
     surface_temp_item_code = 4
     endgame = 388
-
-    #Obtain the arguements from the commandline
+   #Obtain the arguements from the commandline
     #Then set the seed if there is one
     args = parse_args()
     random_obj = set_seed(args)
 
-    f = umfile.UMFile(args.ifile, 'r+')
+    ff = mule.FieldsFile.from_file(args.ifile)
 
     # The definitions of the grid
-    nlon = f.inthead[IC_XLen]
-    nlat = f.inthead[IC_YLen]
+    # Set up theta perturbation.
+    nlon = ff.integer_constants.num_cols
+    nlat = ff.integer_constants.num_rows
 
     # Same at each level so as not to upset vertical stability
     perturb = create_perturbation(args, random_obj, nlon, nlat)
+    set_perturbation = SetPerturbOperator(perturb)
 
-    for k in range(f.fixhd[FH_LookupSize2]):
+    for ifield, field in enumerate(ff.fields):
 
-        ilookup = f.ilookup[k]
+        # Set the surface temperature to 50 is this theta? Or is this something else?
+        if field.lbuser4 == 24:
+            ff.fields[ifield] = set_perturbation(field)
 
-        if is_end_of_file(ilookup[LBEGIN], data_limit):
-            break
+        #if is_end_of_file(ilookup[LBEGIN], data_limit):
+        #    break
 
-        is_perturb, a = if_perturb(ilookup[ITEM_CODE],k,f,perturb,surface_temp_item_code,endgame)
-        if is_perturb:
+        #is_perturb, a = if_perturb(ilookup[ITEM_CODE],k,f,perturb,surface_temp_item_code,endgame)
+        #if is_perturb:
 
-            f.writefld(a,k)
+        #   f.writefld(a,k)
 
-    f.close()
+    ff.to_file(args.ifile)
 
 
 if __name__== "__main__":
