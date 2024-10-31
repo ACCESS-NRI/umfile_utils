@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-
-# Apply a perturbation to initial condition.
-# Note that this works in place.
-# For ENDGAME perturb thetavd as well if it's present
-
-# Martin Dix martin.dix@csiro.au
-
-#!/usr/bin/env python
-
 # Apply a perturbation to initial condition.
 # Note that this works in place.
 # For ENDGAME perturb thetavd as well if it's present
@@ -16,8 +6,10 @@
 
 import argparse
 import umfile
-import um_fileheaders
+from um_fileheaders import *
 from numpy.random import PCG64, Generator
+import mule
+
 
 def parse_args():
     """
@@ -63,6 +55,7 @@ def set_seed(args):
 
     elif args.seed >=0:
         return Generator(PCG64(args.seed))
+
     else:
         raise Exception('Seed must be positive')
 
@@ -103,6 +96,7 @@ def create_perturbation(args, rs, nlon, nlat):
     nlon: Int - This is the lon
            Argument 3 description
 
+
     Returns
     ----------
     pertubation -  Array - Returns a perturbation where the poles are set to 0
@@ -140,45 +134,34 @@ def is_end_of_file(ilookup_table,data_limit):
     else:
         return False
 
-def if_perturb(ilookup_code,k,f,perturb,surface_temp_item_code,endgame):
+def do_perturb(field, surface_stash_code):
     """
     This function checks to make sure that the correct field is used (surface temperature)
 
     Parameters
     ----------
-    ilookup : FIXME
-    k : int
-            This integer is indexing the metadata in the fields file
+    
+    field : mule fields Object
+           Holds the entire umfile including metadata and datai
 
-    f : umFile Object
-           Holds the entire umfile including metadata and data
-    
-    perturb : Array 
-        Holds the random perturbation and has shape nlon x nlat  
-    
-    surface_temp_item_code : int
+    surface_stash_code : int
         This integer represents the item code for surface temperature or theata
     
-    endgame : int
-        This integer represents the FIXME
 
     Returns
     ----------
-    boolean - True if this is the correct data to be perturbed. False for all other item codes
-    Array - If True the perturbation is added to the data array
+    boolean - True if this is the correct data to be perturbed. False for all other item code
 
     """
-    if ilookup_code in (surface_temp_item_code,endgame):
+         
+    if field.lbuser4 == surface_stash_code:
 
-        a = f.readfld(k)
-        a += perturb
-
-        return True, a
+        return True
 
     else:
 
-        return False, None
-        
+        return False
+
 def main():
     """
     This function executes all the steps to add the perturbation.The results if saving the perturbation 
@@ -187,36 +170,41 @@ def main():
 
     #Define all the variables  
     data_limit = -99
-    surface_temp_item_code = 4
-    endgame = 388
+    surface_temp_stash = 24
 
     #Obtain the arguements from the commandline
     #Then set the seed if there is one
     args = parse_args()
     random_obj = set_seed(args)
 
-    f = umfile.UMFile(args.ifile, 'r+')
+    ff = mule.FieldsFile.from_file(args.ifile)
 
     # The definitions of the grid
-    nlon = f.inthead[IC_XLen]
-    nlat = f.inthead[IC_YLen]
+    # Set up theta perturbation.
+    nlon = ff.integer_constants.num_cols
+    nlat = ff.integer_constants.num_rows
 
     # Same at each level so as not to upset vertical stability
-    perturb = create_perturbation(args, random_obj, nlon, nlat)
+    perturbation = create_perturbation(args, random_obj, nlon, nlat)
 
-    for k in range(f.fixhd[FH_LookupSize2]):
+    for ifield, field in enumerate(ff.fields):
 
-        ilookup = f.ilookup[k]
 
-        if is_end_of_file(ilookup[LBEGIN], data_limit):
-            break
+        # Set the surface temperature to 50 is this theta? Or is this something else?
+        if do_perturb(field, surface_temp_stash):
 
-        is_perturb, a = if_perturb(ilookup[ITEM_CODE],k,f,perturb,surface_temp_item_code,endgame)
-        if is_perturb:
+            data = field.get_data()
+            ff.fields[ifield] = data+perturbation
 
-            f.writefld(a,k)
+        #if is_end_of_file(ilookup[LBEGIN], data_limit):
+        #    break
 
-    f.close()
+        #is_perturb, a = if_perturb(ilookup[ITEM_CODE],k,f,perturb,surface_temp_item_code,endgame)
+        #if is_perturb:
+
+        #   f.writefld(a,k)
+
+    ff.to_file(args.ifile)
 
 
 if __name__== "__main__":
