@@ -18,9 +18,26 @@ def remove_fields(umfile, output_file, fields_to_remove):
 
 def main()
 
-    # Define input/output file paths and the fields you want to remove
-    input_file = "/home/198/lo9311/access-esm1.5/preindustrial+concentrations/archive/restart000/atmosphere/restart_dump_old_perturb.astart"
-    output_file = "/home/198/lo9311/access-esm1.5/preindustrial+concentrations/archive/restart000/atmosphere/modified_file.astart"
+    try:
+    optlist, args = getopt.getopt(sys.argv[1:], 'i:n:o:psv:x:')
+    for opt in optlist:
+        if opt[0] == '-i':
+            ifile = opt[1]
+        elif opt[0] == '-n':
+            nfields = int(opt[1])
+        elif opt[0] == '-o':
+            ofile = opt[1]
+        elif opt[0] == '-p':
+            prognostic = True
+        elif opt[0] == '-s':
+            section = True
+        elif opt[0] == '-v':
+            # Allow comma separated lists
+            for v in opt[1].split(","):
+                vlist.append(int(v))
+        elif opt[0] == '-x':
+            for v in opt[1].split(","):
+                xlist.append(int(v))
     fields_to_remove = [155,156,3100, 3101, 33001, 33002]  # Example list of STASH codes or section numbers to remove
 
     um_file = mule.UMfile.from_file(input_file)
