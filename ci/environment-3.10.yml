@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - accessnri
   - defaults
+  - coecms
 dependencies:
   - python==3.10
   - cftime
