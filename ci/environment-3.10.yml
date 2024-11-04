@@ -15,9 +15,9 @@ dependencies:
   - pre-commit
   - pytest
   - xarray
+  - mule
   - pip
   - pip:
     - codecov
     - pytest-cov
     - six 
-    - mule
