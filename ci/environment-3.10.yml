@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - accessnri
   - defaults
+  - coecms
 dependencies:
   - python==3.10
   - cftime
@@ -15,6 +16,7 @@ dependencies:
   - pre-commit
   - pytest
   - xarray
+  - mule
   - pip
   - pip:
     - codecov
