@@ -1,6 +1,6 @@
 import pytest
 import sys
-from perturbIC import parse_args, set_seed, create_perturbation, is_end_of_file,  if_perturb
+from perturbIC import parse_args, set_seed, create_perturbation, is_end_of_file,do_perturb
 from unittest.mock import Mock
 import numpy as np
 import numpy.random as rs
@@ -42,12 +42,13 @@ def mock_metadata():
         list - Command line arguements
     """
 
-    metadata_index_false = 43
+    metadata_index_false = 24
     metadata_index_true = -99
     end_of_data = -99
 
     return metadata_index_false,  metadata_index_true, end_of_data
 
+#Test the Imports may not be necessary
 def test_parse_args(monkeypatch, mock_command_line):
     """
     This function tests the parse_args function with the fake commandline arguments
@@ -63,7 +64,16 @@ def test_parse_args(monkeypatch, mock_command_line):
     assert args.amplitude == 0.4
     assert args.seed == 23452
     assert args.output == "restart_dump_copy_perturb.astart"
+#Test checking the seed
+#def test_set_seed(args):
+#Not sure if we need test but the conditionals in a function is nice. 
 
+
+#Test creating output file
+#def test_creating_output_file():
+
+
+#Test the random generator
 def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
     """
     This function tests the create_perturbation function with the fake commandline arguments
@@ -95,7 +105,10 @@ def test_is_end_of_file_keep_going(mock_metadata):
     assert is_end_of_file(metadata_index_false, end_of_data) == False
     assert is_end_of_file(metadata_index_true, end_of_data) == True
 
+
+#Test that the perturbation has been applied
 def test_applying_perturbation(mock_perturbation):
+
     """
     This function tests the addition of the perturbation to the correct field 
     This function in the perturbIC.py is written to both check the itemcode when 
@@ -110,26 +123,24 @@ def test_applying_perturbation(mock_perturbation):
 
     #Create random perturbation
     nlon, nlat = mock_perturbation
-    perturb = 0.5 * (2.*rs.random(nlon*nlat).reshape((nlat,nlon))-1.)
-    perturb[0] = 0
-    perturb[-1] = 0
+    perturbation = 0.5 * (2.*rs.random(nlon*nlat).reshape((nlat,nlon))-1.)
+    perturbation[0] = 0
+    perturbation[-1] = 0
+    stash_code = 24
 
     #Create a fake data array to simulate the numpy array that is 
     #To mock the method readfld that reads the field corresponding 
     #To the itemcode 
-    shape = (nlat, nlon)  # Example shape of 3 rows and 4 columns
-    mock_data = Mock()
-    mock_data.readfld.return_value = np.ones(shape)
-    metadata_index = 4
-    surface_temp_item_code = 4
-    endgame = 388
-    k = 0
+                                                                                                                
+    shape = (nlat, nlon)
+    field_theta = Mock()
+    field_not_theta = Mock()
 
-    #Run the fucntion to get the outputs
-    is_perturb,a = if_perturb(metadata_index,k,mock_data,perturb,surface_temp_item_code,endgame)
-
+    field_theta.lbuser4 = 24
+    field_not_theta.lbuser4 = 3
     #Testing if the perturb conditional works and if the resulting array is correct
-    testing_a = np.round((a - perturb) / np.ones(shape),0)
-    assert is_perturb == True
-    assert a.shape == (nlat, nlon)
-    assert testing_a.all() == 1.
+    #testing_a = np.round((perturbed_array - perturb) / np.ones(shape),0) 
+    assert do_perturb(field_theta, stash_code) == True
+    assert do_perturb(field_not_theta, stash_code) == False
+    #assert perturbed_array.shape == (nlat, nlon)
+    #assert testing_a.all() == 1.
