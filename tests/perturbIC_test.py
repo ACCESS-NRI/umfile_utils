@@ -41,9 +41,12 @@ def mock_metadata():
     Outputs
         list - Command line arguements
     """
-
-    metadata_index_false = 24
-    metadata_index_true = -99
+    metadata_index_false = Mock()
+    metadata_index_true = Mock()
+    
+    metadata_index_false.lbuser4 = 24
+    metadata_index_true.lbuser4 = -99
+    
     end_of_data = -99
 
     return metadata_index_false,  metadata_index_true, end_of_data
