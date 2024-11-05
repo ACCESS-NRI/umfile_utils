@@ -197,11 +197,9 @@ def do_perturb(field, surface_temp_code):
     """
          
     if field.lbuser4 == surface_temp_code:
-
         return True
 
     else:
-
         return False
 
 def main():
