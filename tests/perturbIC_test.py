@@ -136,6 +136,3 @@ def test_applying_perturbation(mock_perturbation):
     assert do_perturb(field_not_theta, stash_code) == False
     #assert perturbed_array.shape == (nlat, nlon)
     #assert testing_a.all() == 1.
-
-                                                                                                                                                                                                                                                            148,0-1       Bot
-
