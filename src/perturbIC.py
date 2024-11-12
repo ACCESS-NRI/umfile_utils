@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 # Apply a perturbation to initial condition.
-# Note that this works in place.
-# For ENDGAME perturb thetavd as well if it's present
-
 # Martin Dix martin.dix@csiro.au
 
 import argparse
