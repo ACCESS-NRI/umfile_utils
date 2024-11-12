@@ -94,7 +94,7 @@ def get_rid_of_timeseries(ff):
         return ff
 
 
-def create_output_file(args):
+def create_outfile(args):
     """
     This provides an outline for editing if a new file should be 
     created
@@ -117,7 +117,7 @@ def create_output_file(args):
     if os.path.exists(output_filename):
         raise FileExistsError(f"The file '{output_filename}' already exists. Cannot save over the file")
     else:
-        return args.ifile
+        return output_filename
 
 
 def create_perturbation(args, rs, nlon, nlat):
