@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 # Apply a perturbation to initial condition.
-# Note that this works in place.
-# For ENDGAME perturb thetavd as well if it's present
-
 # Martin Dix martin.dix@csiro.au
 
 import argparse
@@ -29,8 +26,6 @@ def parse_args():
                         help = 'Amplitude of perturbation')
     parser.add_argument('-s', dest='seed', type=int, default=None,
         help = 'Random number seed (must be non-negative integer)')
-    parser.add_argument('-o', dest='output', type=str, default=None,
-        help = 'Output file (if none given modified in place)')
     parser.add_argument('ifile', help='Input file (modified in place)')
     parser.add_argument('-v', dest='validate',
         help='For testing with ESM15 set True', default=True)
@@ -99,7 +94,7 @@ def get_rid_of_timeseries(ff):
         return ff
 
 
-def is_inplace(args):
+def create_outfile(args):
     """
     This provides an outline for editing if a new file should be 
     created
@@ -111,18 +106,19 @@ def is_inplace(args):
 
     Returns
     ----------
-    Boolean - returns False for editing in place and True if a new 
-        outfile has been created
-
-    subprocess.run(['cp', original_file, new_file])
+    output_file - str - This is a string of an output name 
     """
 
-    if args.output == None:
-        return False
+    #Seperate the string into the extension and the base
+    basename, ext = os.path.splitext(args.ifile)
+    output_filename = basename + '_perturbed' + ext
 
+    #Check if that name alreay exists
+    if os.path.exists(output_filename):
+        raise FileExistsError(f"The file '{output_filename}' already exists. Cannot save over the file")
     else:
-        subprocess.run(['cp', args.ifile, args.output])
-        return True
+        return output_filename
+
 
 def create_perturbation(args, rs, nlon, nlat):
     """
@@ -196,7 +192,7 @@ def do_perturb(field, surface_stash_code):
     else:
         return False
 
-class SetPerturbOperator(mule.DataOperator):
+class SetAdditionOperator(mule.DataOperator):
     """
     This class creates a mule operator that adds a random perturbation to a field
 
@@ -258,42 +254,46 @@ def main():
     data_limit = -99
     surface_temp_stash = 4
 
-    # Obtain the arguements from the commandline
-    # Set the seed if one is given else proced without one.
+    # Obtains the arguements from the commandline
     args = parse_args()
+
+    # Create the outputfile name and checks the output file does not exists 
+    output_file = create_output_file(args)
+     
+    # Set the seed if one is given else proced without one.
     random_obj = set_seed(args)
 
     # Skips the validation entirely for use on ESM15 due to river fields error
     set_validation(args.validate)
-
     ff_raw = mule.DumpFile.from_file(args.ifile)
-
+    
     # Get the  definitions of the grid from the ff object
-    # Set up theta perturbation.
     nlon = ff_raw.integer_constants.num_cols
     nlat = ff_raw.integer_constants.num_rows
 
     # Remove the time series from the data to ensure mule will work
     ff = get_rid_of_timeseries(ff_raw)
 
-    # Create a random perturbation array and set it up as a mule operator
-    # Same at each level so as not to upset vertical stability
+    # Creates a random perturbation array 
     perturbation = create_perturbation(args, random_obj, nlon, nlat)
-    setperturbation = SetPerturbOperator(perturbation)
 
-    #Loop through the fields to find the surface termperature
+    # Sets up the mule opertator to add the perturbation to the data
+    addperturbation = SetAdditionOperator(perturbation)
+
+    # Loop through the fields to find the surface termperature
     for ifield, field in enumerate(ff.fields):
 
+        # Checks the loop has reached the end of the data
         if is_end_of_file(field.lbuser4, data_limit):
             break
 
         # Find the surface temperature field and add the perturbation
         if field.lbuser4 == surface_temp_stash:
-            ff.fields[ifield] = setperturbation(field)
+            ff.fields[ifield] = addperturbation(field)
 
 
     #Not currently set up to do out-of-place yet
-    ff.to_file(args.ifile)
+    ff.to_file(output_file)
 
 if __name__== "__main__":
 
