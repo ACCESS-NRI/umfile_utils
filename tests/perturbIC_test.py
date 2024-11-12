@@ -1,6 +1,6 @@
 import pytest
 import sys
-from perturbIC import parse_args, set_seed, create_perturbation, is_end_of_file,do_perturb
+from perturbIC import parse_args, set_seed, create_outfile, create_perturbation, is_end_of_file,do_perturb
 from unittest.mock import Mock
 import numpy as np
 import numpy.random as rs
@@ -15,8 +15,7 @@ def mock_command_line():
         list - Command line arguements
     """
     return ["perturbIC.py", "-a", "0.4", "-s", "23452",
-            "-o", "restart_dump_copy_perturb.astart",
-            "~/access-esm1.5/preindustrial+concentrations/archive/restart000/atmosphere/restart_dump_copy.astart"]
+            "~/example/path/to/the/file/restart_dump.astart"]
 
 @pytest.fixture
 def mock_perturbation():
@@ -49,12 +48,14 @@ def mock_metadata():
 
     return metadata_index_false,  metadata_index_true, end_of_data
 
+
 def test_parse_args(monkeypatch, mock_command_line):
     """
     This function tests the parse_args function with the fake commandline arguments
     Inputs
         fixture - A class of helpful methods for mock data 
         fixture - A list of command line arguements
+
     Outputs 
         The results of assertion tests. 
     """
@@ -63,7 +64,22 @@ def test_parse_args(monkeypatch, mock_command_line):
     args = parse_args()
     assert args.amplitude == 0.4
     assert args.seed == 23452
-    assert args.output == "restart_dump_copy_perturb.astart"
+    assert args.ifile == '~/example/path/to/the/file/restart_dump.astart'
+
+def test_creating_output_file(monkeypatch, mock_command_line):
+    """
+    This function tests the creating the output file name
+    Inputs 
+        fixture - A list of command line arguements
+    Outputs 
+        The results of assertion tests. 
+    """
+
+    monkeypatch.setattr(sys, "argv", mock_command_line)
+    args = parse_args()
+    output_filename = create_outfile(args)
+    print(output_filename)
+    assert output_filename == "~/example/path/to/the/file/restart_dump_perturbed.astart"
 
 def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
     """
@@ -121,18 +137,21 @@ def test_applying_perturbation(mock_perturbation):
 
     # Create a fake data array to simulate the numpy array that is 
     # To mock the method readfld that reads the field corresponding to the itemcode 
-    
+
     shape = (nlat, nlon)
     field_theta = Mock()
     field_not_theta = Mock()
 
     field_theta.lbuser4 = 4
     field_not_theta.lbuser4 = 3
-    
+
     # Testing if the perturb conditional works and if the resulting array is correct
-    
+
     #testing_a = np.round((perturbed_array - perturb) / np.ones(shape),0) 
     assert do_perturb(field_theta, stash_code) == True
     assert do_perturb(field_not_theta, stash_code) == False
     #assert perturbed_array.shape == (nlat, nlon)
     #assert testing_a.all() == 1.
+
+                                                                                                                                                           153,0-1       Bot
+
