@@ -129,7 +129,6 @@ def test_is_end_of_file_keep_going(mock_metadata):
 
 
 def test_finding_field(mock_perturbation):
-
     """
     This function in the perturbIC.py is written to both check the itemcode when 
     it finds the correct item code to read the field and add the perturbation.
@@ -143,20 +142,8 @@ def test_finding_field(mock_perturbation):
         The results of assertion tests. 
     """
 
-    # Create random perturbation
-    nlon, nlat = mock_perturbation
-    perturbation = 0.5 * (2.*rs.random(nlon*nlat).reshape((nlat,nlon))-1.)
-    perturbation[0] = 0
-    perturbation[-1] = 0
+    # Set up the real item code and itemcode inputs to test the conditional
     stash_code = 4
-
-    # Create a fake data array to simulate the numpy array that is 
-    # To mock the method readfld that reads the field corresponding to the itemcode 
-
-    shape = (nlat, nlon)
-    field_theta = Mock()
-    field_not_theta = Mock()
-
     field_theta.lbuser4 = 4
     field_not_theta.lbuser4 = 3
 
@@ -165,14 +152,43 @@ def test_finding_field(mock_perturbation):
     assert do_perturb(field_not_theta, stash_code) == False
 
 def test_operator_initialization():
-    
     """
     This function test that the operator initializes with the correct perturbation.
 
-    Outputs
+    Returns
+    ________
         The results of testing if the peturbation intialize worked 
 
     """
     perturb = np.array([1, 2, 3])
     operator = SetAdditionOperator(perturb)
     assert np.array_equal(operator.perturbation, perturb)
+    
+def test_transform():
+    """
+    This function test the transform method of the SetAdditionOperator class
+    It creates a fake perturbationm and fake source data array then it sets
+    up the operator and performs the transformation
+
+    Returns
+    ________
+     
+        Assertion is True if the resulting array is what is expected
+    
+    """
+    perturb = np.array([34, 213, 654])
+    source_data = np.array([200,234,453])
+
+    # Mock source_field
+    source_field = MagicMock()
+    source_field.get_data.return_value = source_data  # Mock get_data
+
+    operator = SetAdditionOperator(perturb)
+    result = operator.transform(source_field, None)
+
+    source_field.get_data.assert_called_once()  # Ensure get_data is called
+    expected_result = source_data + perturb
+
+    assert np.array_equal(result, expected_result)
+
+                                                               
