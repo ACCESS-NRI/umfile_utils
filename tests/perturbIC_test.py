@@ -9,9 +9,10 @@ import numpy.random as rs
 @pytest.fixture
 def mock_command_line():
     """
-    This function create a callable command line input
+    This function create a callable command line input.
     
-    Outputs
+    Returns
+    __________
         list - Command line arguements
     """
     return ["perturbIC.py", "-a", "0.4", "-s", "23452",
@@ -20,9 +21,10 @@ def mock_command_line():
 @pytest.fixture
 def mock_perturbation():
     """
-    This function create a callable perturbation dimensions
+    This function create a callable perturbation dimensions.
     
-    Outputs
+    Returns
+    __________
         nlon - int
         nlat - int
     """
@@ -35,9 +37,10 @@ def mock_perturbation():
 @pytest.fixture
 def mock_metadata():
     """
-    This function create a callable metadata
+    This function create a callable metadata.
 
-    Outputs
+    Returns
+    __________
         list - Command line arguements
     """
 
@@ -51,12 +54,15 @@ def mock_metadata():
 
 def test_parse_args(monkeypatch, mock_command_line):
     """
-    This function tests the parse_args function with the fake commandline arguments
-    Inputs
+    This function tests the parse_args function with the fake commandline arguments.
+    
+    Parameters
+    __________
         fixture - A class of helpful methods for mock data 
         fixture - A list of command line arguements
 
-    Outputs 
+    Returns
+    __________
         The results of assertion tests. 
     """
 
@@ -68,10 +74,14 @@ def test_parse_args(monkeypatch, mock_command_line):
 
 def test_creating_output_file(monkeypatch, mock_command_line):
     """
-    This function tests the creating the output file name
-    Inputs 
+    This function tests the creating the output filename.
+    
+    Parameters
+    __________
         fixture - A list of command line arguements
-    Outputs 
+        
+    Returns
+    __________
         The results of assertion tests. 
     """
 
@@ -101,10 +111,14 @@ def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
 
 def test_is_end_of_file_keep_going(mock_metadata):
     """
-    This function tests the detection of the edge of the data
-    Inputs
+    This function tests the detection of the edge of the data.
+    
+    Parameters
+    __________
         fixture - A fake list of arrays and a fake index
-    Outputs 
+        
+    Returns
+    __________
         The results of assertion tests. 
     """
 
@@ -121,10 +135,12 @@ def test_applying_perturbation(mock_perturbation):
     This function in the perturbIC.py is written to both check the itemcode when 
     it finds the correct item code to read the field and add the perturbation.
 
-
-    Inputs
+    Parameters
+    __________
         fixture - A fake list of arrays and a fake index
-    Outputs 
+        
+    Returns
+    __________
         The results of assertion tests. 
     """
 
