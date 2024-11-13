@@ -141,6 +141,8 @@ def test_finding_field(mock_perturbation):
     __________
         The results of assertion tests. 
     """
+    field_theta = Mock()
+    field_not_theta = Mock()
 
     # Set up the real item code and itemcode inputs to test the conditional
     stash_code = 4
