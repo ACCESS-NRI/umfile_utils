@@ -29,7 +29,7 @@ def parse_args():
         help = 'Random number seed (must be non-negative integer)')
     parser.add_argument('ifile', help='Input file (modified in place)')
     parser.add_argument('-v', dest='validate',
-        help='For testing with ESM15 set True', default=True)
+        help='To include validation set -v False', default=True)
     args_parsed = parser.parse_args()
     return args_parsed
 
@@ -50,10 +50,8 @@ def set_seed(args):
     """
     if args.seed == None:
         return Generator(PCG64())
-
     elif args.seed >=0:
         return Generator(PCG64(args.seed))
-
     else:
         raise Exception('Seed must be positive')
 
@@ -80,7 +78,6 @@ def get_rid_of_timeseries(ff):
         # Check for the grid code that denotes a timeseries
         if fld.lbcode in (31320, 31323):
             num_ts += 1
-
         else:
             ff_out.fields.append(fld)
 
@@ -88,7 +85,6 @@ def get_rid_of_timeseries(ff):
     if num_ts > 0:
         print(f'{num_ts} timeseries fields skipped')
         return ff_out
-
     # Or return all the feilds
     else:
         print('No timeseries fields found')
@@ -136,13 +132,13 @@ def create_perturbation(args, rs, nlon, nlat):
     Returns
     ----------
     pertubation -  Array - Returns a perturbation where the poles are set to 0
-
     """
     perturbation = args.amplitude * (2.*rs.random(nlon*nlat).reshape((nlat,nlon)) - 1.)
 
     # Set poles to zero (only necessary for ND grids, but doesn't hurt EG)
     perturbation[0] = 0
     perturbation[-1] = 0
+    
     return perturbation
 
 def is_end_of_file(field_data, data_limit):
@@ -162,7 +158,6 @@ def is_end_of_file(field_data, data_limit):
     Returns
     ----------
     boolean - True if the end of the data is reached and False everwhere else
-
     """
 
     if field_data  == data_limit:
@@ -185,11 +180,9 @@ def do_perturb(field, surface_stash_code):
     Returns
     ----------
     boolean - True if this is the correct data to be perturbed. False for all other item code
-
     """
     if field.lbuser4 == surface_stash_code:
         return True
-
     else:
         return False
 
@@ -241,7 +234,6 @@ def set_validation(validate):
     """
     if validate:
         mule.DumpFile.validate = void
-
     else:
         print("May encounter an error  if using ESM15 with the river field grids set validate to True to circumvent")
 
@@ -265,12 +257,13 @@ def main():
     random_obj = set_seed(args)
 
     # Skips the validation entirely for use on ESM15 due to river fields error
+    # Creates the mule field object 
     set_validation(args.validate)
     ff_raw = mule.DumpFile.from_file(args.ifile)
     
-    # Get the  definitions of the grid from the ff object
-    nlon = ff_raw.integer_constants.num_cols
-    nlat = ff_raw.integer_constants.num_rows
+    # Set up the definitions of the grid the Dumpfile object doesn't have a way to do this?
+    nlon = 192
+    nlat = 145
 
     # Remove the time series from the data to ensure mule will work
     ff = get_rid_of_timeseries(ff_raw)
@@ -287,13 +280,10 @@ def main():
         # Checks the loop has reached the end of the data
         if is_end_of_file(field.lbuser4, data_limit):
             break
-
         # Find the surface temperature field and add the perturbation
         if field.lbuser4 == surface_temp_stash:
             ff.fields[ifield] = addperturbation(field)
 
-
-    #Not currently set up to do out-of-place yet
     ff.to_file(output_file)
 
 if __name__== "__main__":
