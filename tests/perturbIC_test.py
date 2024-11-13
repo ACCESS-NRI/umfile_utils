@@ -162,12 +162,8 @@ def test_applying_perturbation(mock_perturbation):
     field_not_theta.lbuser4 = 3
 
     # Testing if the perturb conditional works and if the resulting array is correct
-
     #testing_a = np.round((perturbed_array - perturb) / np.ones(shape),0) 
     assert do_perturb(field_theta, stash_code) == True
     assert do_perturb(field_not_theta, stash_code) == False
     #assert perturbed_array.shape == (nlat, nlon)
-    #assert testing_a.all() == 1.
-
-                                                                                                                                                           153,0-1       Bot
-
+    #assert testing_a.all() == 1
