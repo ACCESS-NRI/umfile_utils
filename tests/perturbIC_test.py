@@ -1,7 +1,7 @@
 import pytest
 import sys
-from perturbIC import parse_args, set_seed, create_outfile, create_perturbation, is_end_of_file,do_perturb
-from unittest.mock import Mock
+from perturbIC import parse_args, set_seed, create_outfile, create_perturbation, is_end_of_file,do_perturb, SetAdditionOperator
+from unittest.mock import Mock, MagicMock
 import numpy as np
 import numpy.random as rs
 
@@ -128,10 +128,9 @@ def test_is_end_of_file_keep_going(mock_metadata):
 
 
 
-def test_applying_perturbation(mock_perturbation):
+def test_finding_field(mock_perturbation):
 
     """
-    This function tests the addition of the perturbation to the correct field 
     This function in the perturbIC.py is written to both check the itemcode when 
     it finds the correct item code to read the field and add the perturbation.
 
@@ -161,9 +160,19 @@ def test_applying_perturbation(mock_perturbation):
     field_theta.lbuser4 = 4
     field_not_theta.lbuser4 = 3
 
-    # Testing if the perturb conditional works and if the resulting array is correct
-    #testing_a = np.round((perturbed_array - perturb) / np.ones(shape),0) 
+    # Testing if the perturb conditional works correctly and triggers for the right field
     assert do_perturb(field_theta, stash_code) == True
     assert do_perturb(field_not_theta, stash_code) == False
-    #assert perturbed_array.shape == (nlat, nlon)
-    #assert testing_a.all() == 1
+
+def test_operator_initialization():
+    
+    """
+    This function test that the operator initializes with the correct perturbation.
+
+    Outputs
+        The results of testing if the peturbation intialize worked 
+
+    """
+    perturb = np.array([1, 2, 3])
+    operator = SetAdditionOperator(perturb)
+    assert np.array_equal(operator.perturbation, perturb)
