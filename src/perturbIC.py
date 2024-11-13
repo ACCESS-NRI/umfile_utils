@@ -3,6 +3,7 @@
 # Apply a perturbation to initial condition.
 # Martin Dix martin.dix@csiro.au
 
+import os
 import argparse
 from numpy.random import PCG64, Generator
 import mule
