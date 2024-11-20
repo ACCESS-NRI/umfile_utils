@@ -1,11 +1,11 @@
-name: umfile_utils-test
+name: umfile-utils-dev
 channels:
-  - conda-forge
   - accessnri
-  - defaults
+  - conda-forge
   - coecms
+  - nodefaults
 dependencies:
-  - python==3.10
+  - python >=3.10, <=3.12
   - cftime
   - ecgtools>=2023.7.13
   - intake==0.7.0
@@ -18,7 +18,3 @@ dependencies:
   - xarray
   - mule
   - pip
-  - pip:
-    - codecov
-    - pytest-cov
-    - six 

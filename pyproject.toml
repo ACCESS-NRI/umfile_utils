@@ -1,19 +1,15 @@
 [project]
-name = "umfile_test"
+name = "umfile-utils"
 version = "0.1.0"
 authors = [
-    { name = "ACCESS-NRI" },
+  {name = "Martin Dix", email="martin.dix@anu.edu.au"},
+  {name = "Lindsey Oberhelman", email="lindsey.oberhelman@anu.edu.au"},
+  {name = "Davide Marchegiani", email="davide.marchegiani@anu.edu.au"},
 ]
-description = "Intake catalog managed by ACCESS-NRI and associated tools"
-readme = "README.rst"
-requires-python = ">=3.9"
-license = { text = "Apache-2.0" }
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-]
+description = "Collection of tools for UM fieldsfiles."
+license = { file = "LICENSE" }
+    keywords = ["UM", "UM utilities", "UM fields files", "umfile_utils"]
+    dynamic = ["version"]
 dependencies = [
     "cftime",
     "ecgtools>=2023.7.13",
