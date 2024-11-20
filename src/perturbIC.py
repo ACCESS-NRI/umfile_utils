@@ -96,28 +96,31 @@ def create_default_outname(filename, suffix="_perturbed"):
     return f"{output_filename}{num}"
 
 
-def create_perturbation(args, rs, nlon, nlat):
+def create_perturbation(amplitude, random_generator, shape, nullify_poles = True):
     """
-    This function create a random pertrbation of amplitude args.amplitude 
+    Create a uniformly-distributed random perturbation of given amplitude and shape, using the given random_generator.
+    If nullify_poles is set to True, nullifies the perturbation amplitude at the poles.
 
     Parameters
     ----------
-    args : Dictionary - The argumenst from the commandline (amplitude, seed)
-        rs : Random Object - The random object that has a seed (if defined)
-           Argument 2 description
-    nlon: Int - This is the lon
-           Argument 3 description
+    amplitude: float
+        The amplitude of the random perturbation.
+    random_generator: numpy.random.Generator
+        The random generator used to generate the random perturbation.
+    shape: tuple or list
+        Shape of the generated perturbation.
+    nullify_poles: bool, optional
+        If set to True, nullifies the perturbation amplitude at the poles.
 
     Returns
     ----------
-    pertubation -  Array - Returns a perturbation where the poles are set to 0
+    pertubation: numpy.ndarray 
+        The generated random perturbation.
     """
-    perturbation = args.amplitude * (2.*rs.random(nlon*nlat).reshape((nlat,nlon)) - 1.)
-
+    perturbation = random_generator.uniform(low = -amplitude, high = amplitude, size = shape)
     # Set poles to zero (only necessary for ND grids, but doesn't hurt EG)
-    perturbation[0] = 0
-    perturbation[-1] = 0
-    
+    if nullify_poles:
+        perturbation[[0,-1],:] = 0    
     return perturbation
 
 def is_end_of_file(field_data, data_limit):
