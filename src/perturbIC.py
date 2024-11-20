@@ -11,7 +11,7 @@ import mule
 
 def parse_args():
     """
-    This function parses the arguments from the command line
+   Parse the command line arguments.
 
     Parameters
     ----------
@@ -19,8 +19,8 @@ def parse_args():
 
     Returns
     ----------
-    args_parsed : ArguementParser object
-        Contains the arguments from the command line that can be access with their dest
+    args_parsed : argparse.Namespace
+        Argparse namespace containing the parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
@@ -33,37 +33,32 @@ def parse_args():
     args_parsed = parser.parse_args()
     return args_parsed
 
-def set_seed(args):
+def create_random_generator(value=None):
     """
-    This function sets the seed, if any, for the random generator
+    Create the random generator object using the provided value as a seed.
 
     Parameters
     ----------
-    args : ArgumentParser object
-           The argument parser object with amplitude, seed from commandline
+    value : int
+           The seed value used to create the random generator.
 
     Returns
     ----------
-    Random Object
-    or 
-    Exception
+    numpy.random.Generator
+        The numpy random generator object.
     """
-    if args.seed == None:
-        return Generator(PCG64())
-    elif args.seed >=0:
-        return Generator(PCG64(args.seed))
-    else:
-        raise Exception('Seed must be positive')
+    if value < 0:
+        raise ValueError('Seed value must be non-negative.')
+    return Generator(PCG64(value))    
 
 def get_rid_of_timeseries(ff):
     """
-    This function checks to see if there are times series, then gets rid of them 
-    so that mule can run.
+    Remove any timeseries from a fields file.
 
     Parameters
     ----------
-    args : ArgumentParser object
-           The argument parser object with amplitude, seed from commandline
+    ff : mule.dump.DumpFile
+           The mule DumpFile to remove the timeseries from.
 
     Returns
     ----------
@@ -247,11 +242,11 @@ def main():
     data_limit = -99
     surface_temp_stash = 4
 
-    # Obtains the arguements from the commandline
+    # Parse the command line arguments
     args = parse_args()
 
-    # Create the outputfile name and checks the output file does not exists 
-    output_file = create_output_file(args)
+    # Create the output filename
+    output_file = create_default_outname(args.ifile)
      
     # Set the seed if one is given else proced without one.
     random_obj = set_seed(args)
