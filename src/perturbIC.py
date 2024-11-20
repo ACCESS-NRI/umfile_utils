@@ -28,8 +28,8 @@ def parse_args():
     parser.add_argument('-s','--seed', dest='seed', type=int
         help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
     parser.add_argument('ifile', help='Input file (modified in place)')
-    parser.add_argument('-v', dest='validate',
-        help='To include validation set -v False', default=True)
+    parser.add_argument('--validate', action='store_true',
+        help='Validate the output fields file using mule validation.)
     args_parsed = parser.parse_args()
     return args_parsed
 
