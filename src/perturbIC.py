@@ -87,30 +87,30 @@ def remove_timeseries(ff):
         return ff
 
 
-def create_outfile(args):
+def create_default_outname(filename, suffix="_perturbed"):
     """
-    This provides an outline for editing if a new file should be 
-    created
+    Create a default output filename by appending a suffix to the input filename. 
+    If an output filename already exists, a number will be appended to produce a unique output filename. 
 
     Parameters
     ----------
-    args: ArgumentParser object
-         The argument parser object with output file name
+    filename: str
+         The input filename.
+    suffix: str, optional
+        The suffix to append to the filename.
 
     Returns
     ----------
-    output_file - str - This is a string of an output name 
+    output_filename: str 
+        The default output filename.
     """
-
-    #Seperate the string into the extension and the base
-    basename, ext = os.path.splitext(args.ifile)
-    output_filename = basename + '_perturbed' + ext
-
-    #Check if that name alreay exists
+    output_filename = f"{filename}{suffix}"
+    num=""
     if os.path.exists(output_filename):
-        raise FileExistsError(f"The file '{output_filename}' already exists. Cannot save over the file")
-    else:
-        return output_filename
+        num = 1
+        while os.path.exists(f"{output_filename}{num}"):
+            num += 1
+    return f"{output_filename}{num}"
 
 
 def create_perturbation(args, rs, nlon, nlat):
