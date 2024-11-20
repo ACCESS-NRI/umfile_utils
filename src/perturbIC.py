@@ -24,7 +24,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
-                        help = 'Amplitude of perturbation')
+                        help = 'Amplitude of the perturbation.')
     parser.add_argument('-s', dest='seed', type=int, default=None,
         help = 'Random number seed (must be non-negative integer)')
     parser.add_argument('ifile', help='Input file (modified in place)')
