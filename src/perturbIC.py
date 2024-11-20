@@ -177,21 +177,6 @@ def void_validation(*args, **kwargs):
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
 
 
-def set_validation(validate):
-    """
-    This function sets the validation. It is for testing purposes to cirucmvent the river fields flipped grid in ESM15
-
-    Parameters
-    __________
-
-    validate : boolean
-              This variable is mandatory from the user and is True for testing purposes
-
-    """
-    if validate:
-        mule.DumpFile.validate = void
-    else:
-        print("May encounter an error  if using ESM15 with the river field grids set validate to True to circumvent")
 
 def main():
     """
