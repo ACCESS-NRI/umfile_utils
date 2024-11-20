@@ -123,29 +123,6 @@ def create_perturbation(amplitude, random_generator, shape, nullify_poles = True
         perturbation[[0,-1],:] = 0    
     return perturbation
 
-def is_end_of_file(field_data, data_limit):
-    """
-    This function checks to see if there is data associated with the metadata
-
-    Parameters
-    ----------
-    f : umFile Object 
-        This is the fields file that holds the restart data 
-    
-    k : int
-        This integer is indexing the metadata in the fields file
-
-    data_limit : int
-        This int is a placeholder indicating the end of the data
-    Returns
-    ----------
-    boolean - True if the end of the data is reached and False everwhere else
-    """
-
-    if field_data  == data_limit:
-        return True
-    else:
-        return False
 
 def do_perturb(field, surface_stash_code):
     """
