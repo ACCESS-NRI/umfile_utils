@@ -207,21 +207,17 @@ def main():
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
 
-    # Creates a random perturbation array 
-    perturbation = create_perturbation(args, random_obj, nlon, nlat)
-
-    # Sets up the mule opertator to add the perturbation to the data
-    addperturbation = SetAdditionOperator(perturbation)
-
-    # Loop through the fields to find the surface termperature
+    # loop through the fields
     for ifield, field in enumerate(ff.fields):
-
-        # Checks the loop has reached the end of the data
-        if is_end_of_file(field.lbuser4, data_limit):
-            break
-        # Find the surface temperature field and add the perturbation
-        if field.lbuser4 == surface_temp_stash:
-            ff.fields[ifield] = addperturbation(field)
+        if is_field_to_perturb(field, STASH_THETA):
+            try: 
+                ff.fields[ifield] = perturb_operator(field)
+            except NameError: # perturb_operator is not defined
+            # Only create the perturb_operator if it does not exist yet
+            shape = field.get_data().shape
+            perturbation = create_perturbation(args.amplitude, random_generator, shape)
+            perturb_operator = AdditionOperator(perturbation)
+            ff.fields[ifield] = perturb_operator(field)
 
     ff.to_file(output_file)
 
