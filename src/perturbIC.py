@@ -200,9 +200,6 @@ def main():
     set_validation(args.validate)
     ff_raw = mule.DumpFile.from_file(args.ifile)
     
-    # Set up the definitions of the grid the Dumpfile object doesn't have a way to do this?
-    nlon = 192
-    nlat = 145
 
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
