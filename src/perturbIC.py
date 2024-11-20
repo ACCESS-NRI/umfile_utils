@@ -51,7 +51,7 @@ def create_random_generator(value=None):
         raise ValueError('Seed value must be non-negative.')
     return Generator(PCG64(value))    
 
-def get_rid_of_timeseries(ff):
+def remove_timeseries(ff):
     """
     Remove any timeseries from a fields file.
 
@@ -62,7 +62,8 @@ def get_rid_of_timeseries(ff):
 
     Returns
     ----------
-    ff/ff_out : Returns a mule fields object with no timeseries
+    ff_out : mule.dump.DumpFile 
+        The mule DumpFile with no timeseries.
     """
     ff_out = ff.copy()
     num_ts = 0
@@ -211,9 +212,11 @@ class SetAdditionOperator(mule.DataOperator):
         return data + self.perturbation
 
 
-def void(*args, **kwargs):
-    print('skipping validation')
-    pass
+def void_validation(*args, **kwargs):
+    """
+    Don't perform the validation, but print a message to inform that validation has been skipped.
+    """
+    print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
 
 
 def set_validation(validate):
@@ -239,8 +242,7 @@ def main():
     """
 
     # Define all the variables  
-    data_limit = -99
-    surface_temp_stash = 4
+    STASH_THETA = 4
 
     # Parse the command line arguments
     args = parse_args()
@@ -248,8 +250,8 @@ def main():
     # Create the output filename
     output_file = create_default_outname(args.ifile)
      
-    # Set the seed if one is given else proced without one.
-    random_obj = set_seed(args)
+    # Create the random generator.
+    random_generator = create_random_generator(args.seed)
 
     # Skips the validation entirely for use on ESM15 due to river fields error
     # Creates the mule field object 
@@ -261,7 +263,7 @@ def main():
     nlat = 145
 
     # Remove the time series from the data to ensure mule will work
-    ff = get_rid_of_timeseries(ff_raw)
+    ff = remove_timeseries(ff_raw)
 
     # Creates a random perturbation array 
     perturbation = create_perturbation(args, random_obj, nlon, nlat)
