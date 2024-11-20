@@ -124,26 +124,23 @@ def create_perturbation(amplitude, random_generator, shape, nullify_poles = True
     return perturbation
 
 
-def do_perturb(field, surface_stash_code):
+def is_field_to_perturb(field, stash_to_perturb):
     """
-    This function checks to make sure that the correct field is used (surface temperature)
-
+    Check if the field STASH itemcode correspond to the one to perturb.
+    
     Parameters
     ----------
-    
-    field : mule fields Object
-           Holds the entire umfile including metadata and datai
-
-    surface_stash_code : int
+    field : mule.Field
+           Field to check.
+    stash_to_perturb: int
+        STASH itemcode to perturb.
 
     Returns
     ----------
-    boolean - True if this is the correct data to be perturbed. False for all other item code
+    bool
+        Returns True if the field STASH itemcode corresponds to the one to perturb.
     """
-    if field.lbuser4 == surface_stash_code:
-        return True
-    else:
-        return False
+    return field.lbuser4 == stash_to_perturb
 
 class SetAdditionOperator(mule.DataOperator):
     """
