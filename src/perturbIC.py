@@ -237,8 +237,7 @@ def set_validation(validate):
 
 def main():
     """
-    This function executes all the steps to add the perturbation.The results if saving the perturbation 
-    in the restart file. 
+    Add a bi-dimensional random perturbation to the potential temperature field (STASH itemcode = 4) of a UM fields file.
     """
 
     # Define all the variables  
