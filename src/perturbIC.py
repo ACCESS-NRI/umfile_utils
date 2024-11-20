@@ -195,9 +195,9 @@ def main():
     # Create the random generator.
     random_generator = create_random_generator(args.seed)
 
-    # Skips the validation entirely for use on ESM15 due to river fields error
-    # Creates the mule field object 
-    set_validation(args.validate)
+    # Skip mule validation if the "--validate" option is provided
+    if args.validate:
+        mule.DumpFile.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
     
 
