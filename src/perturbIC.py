@@ -24,12 +24,12 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
-                        help = 'Amplitude of perturbation')
-    parser.add_argument('-s', dest='seed', type=int, default=None,
-        help = 'Random number seed (must be non-negative integer)')
-    parser.add_argument('ifile', help='Input file (modified in place)')
-    parser.add_argument('-v', dest='validate',
-        help='To include validation set -v False', default=True)
+                        help = 'Amplitude of the perturbation.')
+    parser.add_argument('-s','--seed', dest='seed', type=int,
+        help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
+    parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
+    parser.add_argument('--validate', action='store_true',
+        help='Validate the output fields file using mule validation.')
     args_parsed = parser.parse_args()
     return args_parsed
 
@@ -47,9 +47,11 @@ def create_random_generator(value=None):
     numpy.random.Generator
         The numpy random generator object.
     """
+
+
     if value < 0:
         raise ValueError('Seed value must be non-negative.')
-    return Generator(PCG64(value))    
+    return Generator(PCG64(value))
 
 def remove_timeseries(ff):
     """
@@ -66,150 +68,109 @@ def remove_timeseries(ff):
         The mule DumpFile with no timeseries.
     """
     ff_out = ff.copy()
-    num_ts = 0
-
-    # Perform timeseries removal without rewriting file
-    for fld in ff.fields:
-
-        # Check for the grid code that denotes a timeseries
-        if fld.lbcode in (31320, 31323):
-            num_ts += 1
-        else:
-            ff_out.fields.append(fld)
-
-    # Either return the fields with the timeseries removed
-    if num_ts > 0:
-        print(f'{num_ts} timeseries fields skipped')
-        return ff_out
-    # Or return all the feilds
-    else:
-        print('No timeseries fields found')
-        return ff
+    ff_out.fields=[field for field in ff.fields if field.lbcode not in TIMESERIES_LBCODES]
+    return ff_out
 
 
-def create_outfile(args):
+def create_default_outname(filename, suffix="_perturbed"):
     """
-    This provides an outline for editing if a new file should be 
-    created
+    Create a default output filename by appending a suffix to the input filename. 
+    If an output filename already exists, a number will be appended to produce a unique output filename. 
 
     Parameters
     ----------
-    args: ArgumentParser object
-         The argument parser object with output file name
+    filename: str
+         The input filename.
+    suffix: str, optional
+        The suffix to append to the filename.
 
     Returns
     ----------
-    output_file - str - This is a string of an output name 
+    output_filename: str 
+        The default output filename.
     """
-
-    #Seperate the string into the extension and the base
-    basename, ext = os.path.splitext(args.ifile)
-    output_filename = basename + '_perturbed' + ext
-
-    #Check if that name alreay exists
+    output_filename = f"{filename}{suffix}"
+    num=""
     if os.path.exists(output_filename):
-        raise FileExistsError(f"The file '{output_filename}' already exists. Cannot save over the file")
-    else:
-        return output_filename
+        num = 1
+        while os.path.exists(f"{output_filename}{num}"):
+            num += 1
+    return f"{output_filename}{num}"
 
 
-def create_perturbation(args, rs, nlon, nlat):
+def create_perturbation(amplitude, random_generator, shape, nullify_poles = True):
     """
-    This function create a random pertrbation of amplitude args.amplitude 
+    Create a uniformly-distributed random perturbation of given amplitude and shape, using the given random_generator.
+    If nullify_poles is set to True, nullifies the perturbation amplitude at the poles.
 
     Parameters
     ----------
-    args : Dictionary - The argumenst from the commandline (amplitude, seed)
-        rs : Random Object - The random object that has a seed (if defined)
-           Argument 2 description
-    nlon: Int - This is the lon
-           Argument 3 description
+    amplitude: float
+        The amplitude of the random perturbation.
+    random_generator: numpy.random.Generator
+        The random generator used to generate the random perturbation.
+    shape: tuple or list
+        Shape of the generated perturbation.
+    nullify_poles: bool, optional
+        If set to True, nullifies the perturbation amplitude at the poles.
 
     Returns
     ----------
-    pertubation -  Array - Returns a perturbation where the poles are set to 0
+    pertubation: numpy.ndarray 
+        The generated random perturbation.
     """
-    perturbation = args.amplitude * (2.*rs.random(nlon*nlat).reshape((nlat,nlon)) - 1.)
-
+    perturbation = random_generator.uniform(low = -amplitude, high = amplitude, size = shape)
     # Set poles to zero (only necessary for ND grids, but doesn't hurt EG)
-    perturbation[0] = 0
-    perturbation[-1] = 0
-    
+    if nullify_poles:
+        perturbation[[0,-1],:] = 0
     return perturbation
 
-def is_end_of_file(field_data, data_limit):
-    """
-    This function checks to see if there is data associated with the metadata
 
+def is_field_to_perturb(field, stash_to_perturb):
+    """
+    Check if the field STASH itemcode correspond to the one to perturb.
+    
     Parameters
     ----------
-    f : umFile Object 
-        This is the fields file that holds the restart data 
-    
-    k : int
-        This integer is indexing the metadata in the fields file
-
-    data_limit : int
-        This int is a placeholder indicating the end of the data
-    Returns
-    ----------
-    boolean - True if the end of the data is reached and False everwhere else
-    """
-
-    if field_data  == data_limit:
-        return True
-    else:
-        return False
-
-def do_perturb(field, surface_stash_code):
-    """
-    This function checks to make sure that the correct field is used (surface temperature)
-
-    Parameters
-    ----------
-    
-    field : mule fields Object
-           Holds the entire umfile including metadata and datai
-
-    surface_stash_code : int
+    field : mule.Field
+           Field to check.
+    stash_to_perturb: int
+        STASH itemcode to perturb.
 
     Returns
     ----------
-    boolean - True if this is the correct data to be perturbed. False for all other item code
+    bool
+        Returns True if the field STASH itemcode corresponds to the one to perturb.
     """
-    if field.lbuser4 == surface_stash_code:
-        return True
-    else:
-        return False
+    return field.lbuser4 == stash_to_perturb
 
-class SetAdditionOperator(mule.DataOperator):
+class AdditionOperator(mule.DataOperator):
     """
-    This class creates a mule operator that adds a random perturbation to a field
-
-    Parameters
-    __________
-
-    perturb : np.array
-             An array of the random values to be added to the field
+    Create a mule operator that adds an array to a field, provided that the two have the same shape.
     
-    Returns
-    __________
-
-    field - The field with the perturbation added to it
+    Attributes
+    ----------
+    array : numpy.ndarray
+             The array to add to the field.
     """
-    def __init__(self, perturb):
-        self.perturbation = perturb
+    def __init__(self, array):
+        self.array = array
 
     def new_field(self, source_field):
-        """Creates the new field object"""
+        """
+        Create the new field object by copying the source field.
+        """
         return source_field.copy()
 
     def transform(self, source_field, new_field):
-        """Performs the data manipulation"""
+        """
+        Perform the field data manipulation: check that the array and source field data have the same shape and then add them together.
+        """
         data = source_field.get_data()
-
-        # Multiply by 0 to keep the array shape
-        return data + self.perturbation
+        if (field_shape:=data.shape) != (array_shape:=self.array.shape):
+            raise ValueError(f"Array and field could not be broadcast together with shapes {array_shape} and {field_shape}.")
+        else:
+            return data + self.array
 
 
 def void_validation(*args, **kwargs):
@@ -217,28 +178,12 @@ def void_validation(*args, **kwargs):
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
+    return
 
-
-def set_validation(validate):
-    """
-    This function sets the validation. It is for testing purposes to cirucmvent the river fields flipped grid in ESM15
-
-    Parameters
-    __________
-
-    validate : boolean
-              This variable is mandatory from the user and is True for testing purposes
-
-    """
-    if validate:
-        mule.DumpFile.validate = void
-    else:
-        print("May encounter an error  if using ESM15 with the river field grids set validate to True to circumvent")
 
 def main():
     """
-    This function executes all the steps to add the perturbation.The results if saving the perturbation 
-    in the restart file. 
+    Add a bi-dimensional random perturbation to the potential temperature field (STASH itemcode = 4) of a UM fields file.
     """
 
     # Define all the variables  
@@ -249,42 +194,35 @@ def main():
 
     # Create the output filename
     output_file = create_default_outname(args.ifile)
-     
+
     # Create the random generator.
     random_generator = create_random_generator(args.seed)
 
-    # Skips the validation entirely for use on ESM15 due to river fields error
-    # Creates the mule field object 
-    set_validation(args.validate)
+    # Skip mule validation if the "--validate" option is provided
+    if args.validate:
+        mule.DumpFile.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
-    
-    # Set up the definitions of the grid the Dumpfile object doesn't have a way to do this?
-    nlon = 192
-    nlat = 145
+
 
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
 
-    # Creates a random perturbation array 
-    perturbation = create_perturbation(args, random_obj, nlon, nlat)
-
-    # Sets up the mule opertator to add the perturbation to the data
-    addperturbation = SetAdditionOperator(perturbation)
-
-    # Loop through the fields to find the surface termperature
+    # loop through the fields
     for ifield, field in enumerate(ff.fields):
+        if is_field_to_perturb(field, STASH_THETA):
+            try:
+                ff.fields[ifield] = perturb_operator(field)
+            except NameError: # perturb_operator is not defined
+            # Only create the perturb_operator if it does not exist yet
 
-        # Checks the loop has reached the end of the data
-        if is_end_of_file(field.lbuser4, data_limit):
-            break
-        # Find the surface temperature field and add the perturbation
-        if field.lbuser4 == surface_temp_stash:
-            ff.fields[ifield] = addperturbation(field)
+                shape = field.get_data().shape
+                perturbation = create_perturbation(args.amplitude, random_generator, shape)
+                perturb_operator = AdditionOperator(perturbation)
+                ff.fields[ifield] = perturb_operator(field)
 
     ff.to_file(output_file)
 
 if __name__== "__main__":
 
     main()
-
 
