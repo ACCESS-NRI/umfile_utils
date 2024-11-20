@@ -66,25 +66,8 @@ def remove_timeseries(ff):
         The mule DumpFile with no timeseries.
     """
     ff_out = ff.copy()
-    num_ts = 0
-
-    # Perform timeseries removal without rewriting file
-    for fld in ff.fields:
-
-        # Check for the grid code that denotes a timeseries
-        if fld.lbcode in (31320, 31323):
-            num_ts += 1
-        else:
-            ff_out.fields.append(fld)
-
-    # Either return the fields with the timeseries removed
-    if num_ts > 0:
-        print(f'{num_ts} timeseries fields skipped')
-        return ff_out
-    # Or return all the feilds
-    else:
-        print('No timeseries fields found')
-        return ff
+    ff_out.fields=[field for field in ff.fields if field.lbcode not in TIMESERIES_LBCODES]
+    return ff_out
 
 
 def create_default_outname(filename, suffix="_perturbed"):
