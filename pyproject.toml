@@ -11,12 +11,29 @@ license = { file = "LICENSE" }
     keywords = ["UM", "UM utilities", "UM fields files", "umfile_utils"]
     dynamic = ["version"]
 dependencies = [
-    "cftime",
-    "ecgtools>=2023.7.13",
-    "intake==0.7.0",
-    "intake-dataframe-catalog>=0.2.4",
-    "intake-esm>=2023.11.10",
-    "jsonschema",
-    "pooch",
-    "xarray",
+    "mule",
+    "numpy <2",
+    "versioneer",
 ]
+
+[project.urls]
+Repository = "https://github.com/ACCESS-NRI/umfile_utils"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>64", 
+    "versioneer[toml]"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/umfile_utils/_version.py"
+versionfile_build = "umfile_utils/_version.py"
+tag_prefix = ""
+parentdir_prefix = "umfile-utils-"
