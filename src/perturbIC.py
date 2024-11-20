@@ -142,34 +142,32 @@ def is_field_to_perturb(field, stash_to_perturb):
     """
     return field.lbuser4 == stash_to_perturb
 
-class SetAdditionOperator(mule.DataOperator):
+class AdditionOperator(mule.DataOperator):
     """
-    This class creates a mule operator that adds a random perturbation to a field
-
-    Parameters
-    __________
-
-    perturb : np.array
-             An array of the random values to be added to the field
+    Create a mule operator that adds an array to a field, provided that the two have the same shape.
     
-    Returns
-    __________
-
-    field - The field with the perturbation added to it
+    Attributes
+    ----------
+    array : numpy.ndarray
+             The array to add to the field.
     """
-    def __init__(self, perturb):
-        self.perturbation = perturb
+    def __init__(self, array):
+        self.array = array
 
     def new_field(self, source_field):
-        """Creates the new field object"""
+        """
+        Create the new field object by copying the source field.
+        """
         return source_field.copy()
 
     def transform(self, source_field, new_field):
-        """Performs the data manipulation"""
+        """
+        Perform the field data manipulation: check that the array and source field data have the same shape and then add them together.
+        """
         data = source_field.get_data()
-
-        # Multiply by 0 to keep the array shape
-        return data + self.perturbation
+        if field_shape:=data.shape != array_shape:=self.array.shape:
+            raise ValueError(f"Array and field could not be broadcast together with shapes {array_shape} and {field_shape}.")
+        return data + self.array
 
 
 def void_validation(*args, **kwargs):
