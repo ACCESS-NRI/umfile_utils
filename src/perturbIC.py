@@ -25,11 +25,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
                         help = 'Amplitude of the perturbation.')
-    parser.add_argument('-s','--seed', dest='seed', type=int
+    parser.add_argument('-s','--seed', dest='seed', type=int,
         help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     parser.add_argument('--validate', action='store_true',
-        help='Validate the output fields file using mule validation.)
+        help='Validate the output fields file using mule validation.')
     args_parsed = parser.parse_args()
     return args_parsed
 
@@ -47,9 +47,11 @@ def create_random_generator(value=None):
     numpy.random.Generator
         The numpy random generator object.
     """
+
+
     if value < 0:
         raise ValueError('Seed value must be non-negative.')
-    return Generator(PCG64(value))    
+    return Generator(PCG64(value))
 
 def remove_timeseries(ff):
     """
@@ -120,7 +122,7 @@ def create_perturbation(amplitude, random_generator, shape, nullify_poles = True
     perturbation = random_generator.uniform(low = -amplitude, high = amplitude, size = shape)
     # Set poles to zero (only necessary for ND grids, but doesn't hurt EG)
     if nullify_poles:
-        perturbation[[0,-1],:] = 0    
+        perturbation[[0,-1],:] = 0
     return perturbation
 
 
@@ -165,9 +167,10 @@ class AdditionOperator(mule.DataOperator):
         Perform the field data manipulation: check that the array and source field data have the same shape and then add them together.
         """
         data = source_field.get_data()
-        if field_shape:=data.shape != array_shape:=self.array.shape:
+        if (field_shape:=data.shape) != (array_shape:=self.array.shape):
             raise ValueError(f"Array and field could not be broadcast together with shapes {array_shape} and {field_shape}.")
-        return data + self.array
+        else:
+            return data + self.array
 
 
 def void_validation(*args, **kwargs):
@@ -175,7 +178,7 @@ def void_validation(*args, **kwargs):
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
-
+    return
 
 
 def main():
@@ -191,7 +194,7 @@ def main():
 
     # Create the output filename
     output_file = create_default_outname(args.ifile)
-     
+
     # Create the random generator.
     random_generator = create_random_generator(args.seed)
 
@@ -199,7 +202,7 @@ def main():
     if args.validate:
         mule.DumpFile.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
-    
+
 
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
@@ -207,19 +210,19 @@ def main():
     # loop through the fields
     for ifield, field in enumerate(ff.fields):
         if is_field_to_perturb(field, STASH_THETA):
-            try: 
+            try:
                 ff.fields[ifield] = perturb_operator(field)
             except NameError: # perturb_operator is not defined
             # Only create the perturb_operator if it does not exist yet
-            shape = field.get_data().shape
-            perturbation = create_perturbation(args.amplitude, random_generator, shape)
-            perturb_operator = AdditionOperator(perturbation)
-            ff.fields[ifield] = perturb_operator(field)
+
+                shape = field.get_data().shape
+                perturbation = create_perturbation(args.amplitude, random_generator, shape)
+                perturb_operator = AdditionOperator(perturbation)
+                ff.fields[ifield] = perturb_operator(field)
 
     ff.to_file(output_file)
 
 if __name__== "__main__":
 
     main()
-
 
