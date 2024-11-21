@@ -1,6 +1,6 @@
 import pytest
 import sys
-from perturbIC import parse_args, set_seed, create_outfile, create_perturbation, is_end_of_file,do_perturb, SetAdditionOperator
+from perturbIC import parse_args, create_random_generator, remove_timeseries, is_field_to_perturb, create_default_outname, create_perturbation, AdditionOperator
 from unittest.mock import Mock, MagicMock
 import numpy as np
 import numpy.random as rs
@@ -9,10 +9,9 @@ import numpy.random as rs
 @pytest.fixture
 def mock_command_line():
     """
-    This function create a callable command line input.
+    This function create a callable command line input
     
-    Returns
-    __________
+    Outputs
         list - Command line arguements
     """
     return ["perturbIC.py", "-a", "0.4", "-s", "23452",
@@ -21,10 +20,9 @@ def mock_command_line():
 @pytest.fixture
 def mock_perturbation():
     """
-    This function create a callable perturbation dimensions.
+    This function create a callable perturbation dimensions
     
-    Returns
-    __________
+    Outputs
         nlon - int
         nlat - int
     """
@@ -37,32 +35,30 @@ def mock_perturbation():
 @pytest.fixture
 def mock_metadata():
     """
-    This function create a callable metadata.
+    This function create a callable metadata
 
-    Returns
-    __________
+    Outputs
         list - Command line arguements
     """
 
-    metadata_index_false = 24
-    metadata_index_true = -99
+    # Mock fields with different lbuser4 values
+    field_theta = MagicMock()
+    field_not_theta = MagicMock()
 
-    end_of_data = -99
+    # Correctly set the lbuser4 attribute
+    field_theta.lbuser4 = 4
+    field_not_theta.lbuser4 = 56
+    stash_code = 4
 
-    return metadata_index_false,  metadata_index_true, end_of_data
-
+    return field_theta, field_not_theta, stash_code
 
 def test_parse_args(monkeypatch, mock_command_line):
     """
-    This function tests the parse_args function with the fake commandline arguments.
-    
-    Parameters
-    __________
-        fixture - A class of helpful methods for mock data 
+    This function tests the parse_args function with the fake commandline arguments
+    Inputs
+       fixture - A class of helpful methods for mock data 
         fixture - A list of command line arguements
-
-    Returns
-    __________
+    Outputs 
         The results of assertion tests. 
     """
 
@@ -70,26 +66,51 @@ def test_parse_args(monkeypatch, mock_command_line):
     args = parse_args()
     assert args.amplitude == 0.4
     assert args.seed == 23452
-    assert args.ifile == '~/example/path/to/the/file/restart_dump.astart'
+    assert args.ifile == "~/example/path/to/the/file/restart_dump.astart"
 
-def test_creating_output_file(monkeypatch, mock_command_line):
+def test_create_default_outname(monkeypatch, mock_command_line):
     """
-    This function tests the creating the output filename.
-    
-    Parameters
-    __________
+    This function tests the creating the output file name
+    Inputs 
         fixture - A list of command line arguements
-        
-    Returns
-    __________
+    Outputs 
         The results of assertion tests. 
     """
 
     monkeypatch.setattr(sys, "argv", mock_command_line)
     args = parse_args()
-    output_filename = create_outfile(args)
-    print(output_filename)
-    assert output_filename == "~/example/path/to/the/file/restart_dump_perturbed.astart"
+    output_filename = create_default_outname(args.ifile)
+    #asssert output_filename == "~/example/path/to/the/file/restart_dump_perturbed.astart"
+    assert output_filename == "~/example/path/to/the/file/restart_dump.astart_perturbed"
+
+def test_remove_timeseries():
+
+    # Mock fields and their lbcode values
+    field1 = MagicMock()
+    field2 = MagicMock()
+    field3 = MagicMock()
+    field1.lbcode = 23
+    field2.lbcode = 345
+    field3.lbcode = 31320
+
+    # Mock the fields file
+    test_fields = MagicMock()
+    test_fields.fields = [field1, field2, field3]
+
+    # Mock the copy method to return a new object (to simulate deep copy behavior)
+    copied_fields = MagicMock()
+    copied_fields.fields = test_fields.fields.copy()
+    test_fields.copy.return_value = copied_fields
+
+    # Run the function
+    out_fields = remove_timeseries(test_fields)
+
+    # Assertions
+    assert len(out_fields.fields) == 2
+    assert field1 in out_fields.fields
+    assert field2 in out_fields.fields
+    assert field3 not in out_fields.fields
+
 
 def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
     """
@@ -101,96 +122,60 @@ def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
         The results of assertion tests. 
     """
 
-    monkeypatch.setattr(sys, "argv", mock_command_line)
-    args = parse_args()
-    rs = set_seed(args)
+    amplitude = 0.4
+    seed = 123
+    rs = create_random_generator(seed)
     nlon, nlat = mock_perturbation
 
-    perturb = create_perturbation(args, rs, nlon, nlat)
+    perturb = create_perturbation(amplitude, rs, [nlat, nlon])
     assert perturb.shape ==  (nlat,nlon)
 
-def test_is_end_of_file_keep_going(mock_metadata):
+def test_is_field_to_perturb(mock_metadata):
+
     """
-    This function tests the detection of the edge of the data.
-    
-    Parameters
-    __________
+    Tests the item code conditional
+
+    Inputs
         fixture - A fake list of arrays and a fake index
-        
-    Returns
-    __________
+    Outputs 
         The results of assertion tests. 
     """
 
-    metadata_index_false, metadata_index_true,end_of_data =  mock_metadata
-    assert is_end_of_file(metadata_index_false, end_of_data) == False
-    assert is_end_of_file(metadata_index_true, end_of_data) == True
+    field_theta, field_not_theta, stash_code = mock_metadata
 
+    # Assertions to verify the function's behavior
+    assert is_field_to_perturb(field_theta, stash_code) == True, "field_theta should match the stash_code"
+    assert is_field_to_perturb(field_not_theta, stash_code) == False, "field_not_theta should not match the stash_code"
 
-
-def test_finding_field(mock_perturbation):
-    """
-    This function in the perturbIC.py is written to both check the itemcode when 
-    it finds the correct item code to read the field and add the perturbation.
-
-    Parameters
-    __________
-        fixture - A fake list of arrays and a fake index
-        
-    Returns
-    __________
-        The results of assertion tests. 
-    """
-    field_theta = Mock()
-    field_not_theta = Mock()
-
-    # Set up the real item code and itemcode inputs to test the conditional
-    stash_code = 4
-    field_theta.lbuser4 = 4
-    field_not_theta.lbuser4 = 3
-
-    # Testing if the perturb conditional works correctly and triggers for the right field
-    assert do_perturb(field_theta, stash_code) == True
-    assert do_perturb(field_not_theta, stash_code) == False
 
 def test_operator_initialization():
     """
-    This function test that the operator initializes with the correct perturbation.
+    Test the addition operator..
 
-    Returns
-    ________
+    Outputs
         The results of testing if the peturbation intialize worked 
 
     """
-    perturb = np.array([1, 2, 3])
-    operator = SetAdditionOperator(perturb)
-    assert np.array_equal(operator.perturbation, perturb)
-    
-def test_transform():
-    """
-    This function test the transform method of the SetAdditionOperator class
-    It creates a fake perturbationm and fake source data array then it sets
-    up the operator and performs the transformation
 
-    Returns
-    ________
-     
-        Assertion is True if the resulting array is what is expected
-    
-    """
-    perturb = np.array([34, 213, 654])
-    source_data = np.array([200,234,453])
-
-    # Mock source_field
+    # Mock the source field
     source_field = MagicMock()
-    source_field.get_data.return_value = source_data  # Mock get_data
+    source_field.get_data.return_value = np.array([[1, 2], [3, 4]])
 
-    operator = SetAdditionOperator(perturb)
-    result = operator.transform(source_field, None)
+    # Mock the new field
+    new_field = MagicMock()
 
-    source_field.get_data.assert_called_once()  # Ensure get_data is called
-    expected_result = source_data + perturb
+    # Array to add
+    array_to_add = np.array([[10, 20], [30, 40]])
+    
+    # Create the operator
+    operator = AdditionOperator(array_to_add)
 
-    assert np.array_equal(result, expected_result)
+    # Test transform method
+    result = operator.transform(source_field, new_field)
 
+    # Expected output
+    expected = np.array([[11, 22], [33, 44]])
+
+    # Assertions
+    np.testing.assert_array_equal(result, expected)
                                                                
