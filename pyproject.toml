@@ -9,7 +9,6 @@ authors = [
 description = "Collection of tools for UM fieldsfiles."
 license = { file = "LICENSE" }
     keywords = ["UM", "UM utilities", "UM fields files", "umfile_utils"]
-    dynamic = ["version"]
 dependencies = [
     "mule",
     "numpy <2",
