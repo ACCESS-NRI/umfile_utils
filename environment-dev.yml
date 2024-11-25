@@ -6,15 +6,14 @@ channels:
   - nodefaults
 dependencies:
   - python >=3.10, <=3.12
-  - cftime
-  - ecgtools>=2023.7.13
-  - intake==0.7.0
-  - intake-dataframe-catalog>=0.2.4
-  - intake-esm>=2023.11.10
   - jsonschema
-  - pooch
   - pre-commit
   - pytest
   - xarray
   - mule
+  - numpy < 2
+  - versioneer
+  - ipykernel
+  - pytest-cov
   - pip
+  
