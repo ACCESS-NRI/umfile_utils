@@ -7,7 +7,7 @@ import os
 import argparse
 from numpy.random import PCG64, Generator
 import mule
-
+TIMESERIES_LBCODES = (31320, 31323)
 
 def parse_args():
     """
