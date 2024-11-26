@@ -43,12 +43,3 @@ jobs:
         shell: bash -l {0}
         run: python -m pytest --cov=src --cov-report=html -s tests
       
-      - name: Generate coverage report
-        shell: bash -l {0}
-        run: coverage xml
-
-      - name: Upload code coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.codecov_token }}
-          files: ./coverage.xml
