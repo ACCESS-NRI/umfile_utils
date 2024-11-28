@@ -27,37 +27,46 @@ def validate_arguments(vlist, xlist, prognostic):
     if prognostic and (vlist or xlist):
         raise Exception("Error: -p incompatible with explicit list of variables")
 
+def void_validation(*args, **kwargs):
+    """
+    Don't perform the validation, but print a message to inform that validation has been skipped.
+    """
+    print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
+    return
+
 def parse_arguments():
 
     parser = argparse.ArgumentParser(description="Subset UM fields based on user-specified options.")
 
     # Define arguments
-    parser.add_argument('-i', '--input', required=True, help="Input file")
-    parser.add_argument('-o', '--output', required=True, help="Output file")
-    parser.add_argument('-n', '--nfields', type=int, default=9999999999,
+    parser.add_argument('-i', '--input', dest='ifile',  required=True, help="Input file")
+    parser.add_argument('-o', '--output', dest='ofile',  required=True, help="Output file")
+    parser.add_argument('-n', '--nfields', dest='nfields',  type=int, default=9999999999,
                         help="Maximum number of fields to process (default: 9999999999)")
-    parser.add_argument('-p', '--prognostic', action='store_true',
+    parser.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
                         help="Include only prognostic (section 0,33,34) variables")
-    parser.add_argument('-s', '--section', action='store_true',
+    parser.add_argument('-s', '--section', dest='section', action='store_true',
                         help="Use section numbers instead of variable indices for -v and -x")
-    parser.add_argument('-v', '--vlist', type=str,
+    parser.add_argument('-v', '--vlist', dest='vlist', type=str,
                         help="Comma-separated list of variables to INCLUDE (STASH indices)")
-    parser.add_argument('-x', '--xlist', type=str,
+    parser.add_argument('-x', '--xlist', dest='xlist',type=str,
                         help="Comma-separated list of variables to EXCLUDE (STASH indices)")
-
+    parser.add_argument('--validate', action='store_true',
+                        help='Validate the output fields file using mule validation.')
     # Parse arguments
     args = parser.parse_args()
 
-    # Process lists from strings to integers
-    vlist = [int(v) for v in args.vlist.split(",")] if args.vlist else []
-    xlist = [int(x) for x in args.xlist.split(",")] if args.xlist else []
+    #Convert from string to int
+    args.vlist = [int(v) for v in args.vlist.split(",")] if args.vlist else []
+    args.xlist = [int(x) for x in args.xlist.split(",")] if args.xlist else []
+
 
     # Check if neither -v nor -x is provided
-    if not vlist and not xlist:
+    if not args.vlist and not args.xlist:
         raise argparse.ArgumentError(None, "Error: Either -v or -x must be specified.")
 
     # Return arguments
-    return args.input, args.output, args.nfields, args.prognostic, args.section, vlist, xlist
+    return args
 
 def match(code,vlist,section):
     if section:
@@ -117,7 +126,6 @@ def copy_fields(input_file, output_file, nfields, prognostic, vlist, xlist, sect
 def finalize_header(output_file, kout, nprog, ntracer):
     """Finalize the output file header."""
 
-
     # Create a copy of the current integer constants
     integer_constants = output_file.integer_constants.copy()
 
@@ -143,22 +151,27 @@ def finalize_header(output_file, kout, nprog, ntracer):
     output_file.integer_constants = integer_constants
 
 def main():
-    ifile, ofile, nfields, prognostic, section, vlist, xlist = parse_arguments()
-    validate_arguments(vlist, xlist, prognostic)
+    args = parse_arguments()
+    validate_arguments(args.vlist, args.xlist, args.prognostic)
+
+    # Skip the mule validation if the "--validate" option is provided
+    if args.validate:
+        mule.DumpFile.validate = void_validation
 
     #Create the output UM file that will be saved to
-    f, g = initialize_output_file(ifile, ofile)
+    f, g = initialize_output_file(args.ifile, args.ofile)
 
     #Find the fields, if any, that needs a land-sea mask
-    check_packed_fields(f, vlist, prognostic, section)
+    check_packed_fields(f, args.vlist, args.prognostic, args.section)
 
     # Loop over all the fields, counting the number of prognostic fields
-    kout, nprog, ntracer = copy_fields(f, g, nfields, prognostic, vlist, xlist, section)
+    kout, nprog, ntracer = copy_fields(f, g, args.nfields, args.prognostic, args.vlist, args.xlist, args.section)
 
     #Create the header and make sure it is large enough
-    finalize_header(g, kout, nprog, ntracer)
-    g.close()
+    #finalize_header(g, kout, nprog, ntracer) 
+    g.to_file(args.ofile)
 
 if __name__== "__main__":
     main()
+
 
