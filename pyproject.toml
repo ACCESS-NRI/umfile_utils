@@ -37,3 +37,6 @@ versionfile_source = "src/umfile_utils/_version.py"
 versionfile_build = "umfile_utils/_version.py"
 tag_prefix = ""
 parentdir_prefix = "umfile-utils-"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
