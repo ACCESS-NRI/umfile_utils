@@ -11,6 +11,7 @@ dependencies:
   - mule
   - numpy < 2
   - versioneer
+  - hypothesis
   - ipykernel
   - pytest-cov
   - pip

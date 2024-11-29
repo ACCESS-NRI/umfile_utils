@@ -1,0 +1,9 @@
+[run]
+branch = True
+
+# skip coverage testing for external source files
+omit = src/umfile_utils/_version.py
+
+[html]
+title = Coverage report: umfile_utils
+directory = coverage_html

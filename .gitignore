@@ -1,0 +1,11 @@
+**/__pycache__/
+.hypothesis/
+.*_cache/
+.vscode/
+.DS_Store
+.idea
+.coverage
+*~
+*.egg-info
+coverage_html
+*.code-workspace
