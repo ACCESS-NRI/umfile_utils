@@ -13,9 +13,6 @@
 
 from __future__ import print_function
 import numpy as np
-import getopt, sys
-import umfile
-from um_fileheaders import *
 import mule
 import argparse
 
@@ -74,16 +71,11 @@ def match(code,vlist,section):
     else:
         return code in vlist
 
-def initialize_output_file(ifile, ofile):
+def initialize_output_file(ff, ofile):
     """Initialize the output UM file."""
-    f = mule.DumpFile.from_file(ifile)
-    g = f.copy()
+    g = ff.copy()
     g.fields = []
-    return f, g
-
-def decode_packing(lbpack):
-    """Decode the packing scheme of a field."""
-    return [0, lbpack % 10, lbpack // 10 % 10, lbpack // 100 % 10, lbpack // 1000 % 10, lbpack // 10000]
+    return g
 
 def include_field(field, prognostic, vlist, xlist, section):
     """Determine if a field should be included based on filters."""
@@ -101,8 +93,8 @@ def check_packed_fields(input_file, vlist, prognostic, section):
     needmask, masksaved = False, False
     for field in input_file.fields:
         if include_field(field, prognostic, vlist, [], section):
-            packing = decode_packing(field.lbpack)
-            needmask |= (packing[2] == 2 and packing[3] in (1, 2))
+            # No need to decode packing, using Mule attributes instead
+            needmask |= (field.lbpack == 2 and field.lblev in (1, 2))  # Adjust conditions as necessary
             masksaved |= (field.lbuser4 == 30)  # 30 corresponds to land-sea mask
     if vlist and needmask and not masksaved:
         print("Adding land sea mask to output fields because of packed data")
@@ -117,40 +109,10 @@ def copy_fields(input_file, output_file, nfields, prognostic, vlist, xlist, sect
         if include_field(field, prognostic, vlist, xlist, section):
             output_file.fields.append(field.copy())
             kout += 1
-            if field.lbuser7 in (0, 33, 34):  # Prognostic sections
-                nprog += 1
-            if field.lbuser4 >= 34001 and field.lbuser4 <= 34100:  # Example tracer range
-                ntracer += 1
-    return kout, nprog, ntracer
-
-def finalize_header(output_file, kout, nprog, ntracer):
-    """Finalize the output file header."""
-
-    # Create a copy of the current integer constants
-    integer_constants = output_file.integer_constants.copy()
-
-    # Update the number of fields
-    integer_constants[22] = kout  # Update the number of fields
-
-    # Update the number of prognostic fields
-    if integer_constants[23] != nprog:
-        print(f"Resetting number of prognostic fields from {integer_constants[23]} to {nprog}")
-        integer_constants[23] = nprog
-
-    # Update the number of tracer fields
-    if integer_constants[40] != ntracer:
-        print(f"Resetting number of tracer fields from {integer_constants[40]} to {ntracer}")
-        integer_constants[40] = ntracer
-
-    # Ensure tracer levels match physical levels
-    if ntracer > 0 and integer_constants[41] != integer_constants[28]:
-        print(f"Resetting number of tracer levels from {integer_constants[41]} to {integer_constants[28]}")
-        integer_constants[41] = integer_constants[28]
-
-    # Assign the modified integer constants back to the output file
-    output_file.integer_constants = integer_constants
 
 def main():
+
+    # Parse the inputs and validate that they do not xlist or vlist are given
     args = parse_arguments()
     validate_arguments(args.vlist, args.xlist, args.prognostic)
 
@@ -158,20 +120,18 @@ def main():
     if args.validate:
         mule.DumpFile.validate = void_validation
 
-    #Create the output UM file that will be saved to
-    f, g = initialize_output_file(args.ifile, args.ofile)
+    ff = mule.DumpFile.from_file(args.ifile)
+    # Create the output UM file that will be saved to
+    outfile = initialize_output_file(ff, args.ofile)
 
-    #Find the fields, if any, that needs a land-sea mask
-    check_packed_fields(f, args.vlist, args.prognostic, args.section)
+    # Find the fields, if any, that needs a land-sea mask
+    check_packed_fields(ff, args.vlist, args.prognostic, args.section)
 
-    # Loop over all the fields, counting the number of prognostic fields
-    kout, nprog, ntracer = copy_fields(f, g, args.nfields, args.prognostic, args.vlist, args.xlist, args.section)
+    # Loop over all the fields
+    copy_fields(ff, outfile, args.nfields, args.prognostic, args.vlist, args.xlist, args.section)
 
-    #Create the header and make sure it is large enough
-    #finalize_header(g, kout, nprog, ntracer) 
-    g.to_file(args.ofile)
+    outfile.to_file(args.ofile)
 
 if __name__== "__main__":
     main()
-
 
