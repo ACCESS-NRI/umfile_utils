@@ -23,11 +23,13 @@ def parse_args():
         Argparse namespace containing the parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Perturb UM initial dump")
+    # Positional arguments
+    parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
+    # Optional arguments
     parser.add_argument('-a', dest='amplitude', type=float, default=0.01,
                         help = 'Amplitude of the perturbation.')
     parser.add_argument('-s','--seed', dest='seed', type=int,
         help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
-    parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
     parser.add_argument('-o', '--output', dest = output_path, metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
