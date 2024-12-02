@@ -32,7 +32,7 @@ def parse_args():
         help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
-    parser.add_argument('-o', '--output', dest = output_path, metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
+    parser.add_argument('-o', '--output', dest = 'output_path', metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
     args_parsed = parser.parse_args()
     return args_parsed
 
