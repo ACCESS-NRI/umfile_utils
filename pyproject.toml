@@ -1,6 +1,6 @@
 [project]
 name = "umfile-utils"
-version = "0.1.0"
+dynamic = ["version"]
 authors = [
   {name = "Martin Dix", email="martin.dix@anu.edu.au"},
   {name = "Lindsey Oberhelman", email="lindsey.oberhelman@anu.edu.au"},
