@@ -196,7 +196,7 @@ def main():
     args = parse_args()
 
     # Create the output filename
-    output_file = create_default_outname(args.ifile)
+    output_file = create_default_outname(args.ifile) if args.output_path is None else args.output_path
 
     # Create the random generator.
     random_generator = create_random_generator(args.seed)
