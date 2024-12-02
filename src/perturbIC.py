@@ -50,7 +50,7 @@ def create_random_generator(value=None):
     numpy.random.Generator
         The numpy random generator object.
     """
-    if value < 0:
+    if value is not None and value < 0:
         raise ValueError('Seed value must be non-negative.')
     return Generator(PCG64(value))
 
