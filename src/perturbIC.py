@@ -184,7 +184,7 @@ def void_validation(*args, **kwargs):
 
 def main():
     """
-    Add a bi-dimensional random perturbation to the potential temperature field (STASH itemcode = 4) of a UM fields file.
+    Add a bi-dimensional random perturbation to the potential temperature field 'Theta' (STASH itemcode = 4) of a UM fields file.
     """
 
     # Define all the variables  
