@@ -40,3 +40,4 @@ parentdir_prefix = "umfile-utils-"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
+addopts = "--cov=src --cov-report=term-missing"

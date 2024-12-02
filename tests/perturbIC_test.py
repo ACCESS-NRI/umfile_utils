@@ -268,49 +268,6 @@ def test_void_validation(capfd):
 
 class TestAdditionOperator:
     """Test the AdditionOperator class."""
-
-<<<<<<< HEAD
-@pytest.mark.parametrize(
-    # description of the arguments
-    "existing_files, filename, expected_output",
-    [
-        # Case 1: Filename with suffix doesn't exist, return filename with suffix
-        ([], "testfilename", "testfilename_perturbed"),
-        # Case 2: Filename with suffix exists, returns filename with suffix appending 1
-        (["testfilename_perturbed"], "testfilename", "testfilename_perturbed1"),
-        # Case 3: Filename with suffix and a few numbered versions exist, returns 
-        # filename with suffix and the first numbered version that doesn't exist
-        (
-            ["testfilename_perturbed", "testfilename_perturbed1", "testfilename_perturbed2"],
-            "testfilename",
-            "testfilename_perturbed3",
-        ),
-    ],
-)
-@patch("os.path.exists")
-def test_create_default_outname_suffix_not_passed(mock_exists, existing_files, filename, expected_output):
-    """
-    Test the function that creates the default output file name, without passing a suffix.
-    3 cases tested with pytest.mark.parametrize.
-    """
-    # Mock os.path.exists to simulate the presence of specific files
-    mock_exists.side_effect = lambda f: f in existing_files
-    result = create_default_outname(filename)
-    assert result == expected_output
-
-@patch("os.path.exists")
-def test_create_default_outname_suffix_passed(mock_exists):
-    """
-    Test the function that creates the default output file name, passing a custom suffix.
-    """
-    # Mock os.path.exists to simulate the presence of specific files
-    mock_exists.return_value = False
-    filename = "testfilename"
-    suffix = "testsuffix"
-    result = create_default_outname(filename, suffix)
-    expected_output = "testfilenametestsuffix"
-    assert result == expected_output
-=======
     @given(array=stnp.arrays(dtype=ARRAY_DTYPES, shape=ARRAY_SHAPES, elements=ARRAY_ELEMENTS))
     def test_addition_operator_init(self, array):
         """Test the initialization of the AdditionOperator class."""
@@ -328,7 +285,6 @@ def test_create_default_outname_suffix_passed(mock_exists):
         new_field = operator.new_field(source_field)  # noqa: F841
         # Ensure that the copy method was called on the source_field
         source_field.copy.assert_called_once()
->>>>>>> b71310c (Updated unit-testing)
 
     @given(
         array=stnp.arrays(
