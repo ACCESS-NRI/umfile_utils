@@ -1,73 +1,45 @@
 import pytest
 import sys
 from perturbIC import parse_args, create_random_generator, remove_timeseries, is_field_to_perturb, create_default_outname, create_perturbation, AdditionOperator
-from unittest.mock import Mock, MagicMock
+from unittest.mock import patch, Mock, MagicMock
 import numpy as np
 import numpy.random as rs
 
-
+#This section sets up the testing for the parse args
 @pytest.fixture
-def mock_command_line():
+def fake_args(monkeypatch):
     """
-    This function create a callable command line input
-    
-    Outputs
-        list - Command line arguements
+    Fixture to set fake command-line arguments.
     """
-    return ["perturbIC.py", "-a", "0.4", "-s", "23452",
-            "~/example/path/to/the/file/restart_dump.astart"]
+    def _fake_args(args):
+        monkeypatch.setattr('sys.argv', args)
+        return args
+    return _fake_args
 
-@pytest.fixture
-def mock_perturbation():
+
+@pytest.mark.parametrize(
+    "input_args, expected",
+    [
+        # Case 1: Test only essential arguments.
+        (["script.py", "input_file"], {"ifile": "input_file", "amplitude": 0.01, "seed": None, "validate": False, "output_path": None}),
+        # Case 2: Test the amplitude
+        (["script.py", "input_file", "-a", "0.05"], {"ifile": "input_file", "amplitude": 0.05, "seed": None, "validate": False, "output_path": None}),
+        # Case 3: Test the validate
+        (["script.py", "input_file", "-s", "42", "--validate"], {"ifile": "input_file", "amplitude": 0.01, "seed": 42, "validate": True, "output_path": None}),
+        # Case 4: Inclusion of the output file
+        (["script.py", "input_file", "-o", "output_file"], {"ifile": "input_file", "amplitude": 0.01, "seed": None, "validate": False, "output_path": "output_file"}),
+    ],
+)
+def test_parse_args(fake_args, input_args, expected):
     """
-    This function create a callable perturbation dimensions
-    
-    Outputs
-        nlon - int
-        nlat - int
+    Test parse_args function with test 4 cases if if the optional arguements are not included.
     """
-
-    nlon = 192
-    nlat = 145
-
-    return nlon, nlat
-
-@pytest.fixture
-def mock_metadata():
-    """
-    This function create a callable metadata
-
-    Outputs
-        list - Command line arguements
-    """
-
-    # Mock fields with different lbuser4 values
-    field_theta = MagicMock()
-    field_not_theta = MagicMock()
-
-    # Correctly set the lbuser4 attribute
-    field_theta.lbuser4 = 4
-    field_not_theta.lbuser4 = 56
-    stash_code = 4
-
-    return field_theta, field_not_theta, stash_code
-
-def test_parse_args(monkeypatch, mock_command_line):
-    """
-    This function tests the parse_args function with the fake commandline arguments
-    Inputs
-       fixture - A class of helpful methods for mock data 
-        fixture - A list of command line arguements
-    Outputs 
-        The results of assertion tests. 
-    """
-
-    monkeypatch.setattr(sys, "argv", mock_command_line)
+    fake_args(input_args)
     args = parse_args()
-    assert args.amplitude == 0.4
-    assert args.seed == 23452
-    assert args.ifile == "~/example/path/to/the/file/restart_dump.astart"
+    for key, value in expected.items():
+        assert getattr(args, key) == value
 
+#This section tests the output file creation. 
 @pytest.mark.parametrize(
     # description of the arguments
     "existing_files, filename, expected_output",
@@ -109,52 +81,69 @@ def test_create_default_outname_suffix_passed(mock_exists):
     expected_output = "testfilenametestsuffix"
     assert result == expected_output
 
-def test_remove_timeseries():
-
-    # Mock fields and their lbcode values
-    field1 = MagicMock()
-    field2 = MagicMock()
-    field3 = MagicMock()
-    field1.lbcode = 23
-    field2.lbcode = 345
-    field3.lbcode = 31320
-
-    # Mock the fields file
-    test_fields = MagicMock()
-    test_fields.fields = [field1, field2, field3]
-
-    # Mock the copy method to return a new object (to simulate deep copy behavior)
-    copied_fields = MagicMock()
-    copied_fields.fields = test_fields.fields.copy()
-    test_fields.copy.return_value = copied_fields
-
-    # Run the function
-    out_fields = remove_timeseries(test_fields)
-
-    # Assertions
-    assert len(out_fields.fields) == 2
-    assert field1 in out_fields.fields
-    assert field2 in out_fields.fields
-    assert field3 not in out_fields.fields
-
-
-def test_create_perturbation(monkeypatch, mock_command_line, mock_perturbation):
+#This section of code tests the removal of the timeseries
+class MockField:
     """
-    This function tests the create_perturbation function with the fake commandline arguments
-    Inputs
-        fixture - A class of helpful methods for mock data 
-        fixture - A list of command line arguements
-    Outputs 
-        The results of assertion tests. 
+    Mock class to simulate a field with an lbcode attribute.
+    """
+    def __init__(self, lbcode):
+        self.lbcode = lbcode
+
+class MockDumpFile:
+    """
+    Mock class to simulate a mule DumpFile.
+    """
+    def __init__(self, fields):
+        self.fields = fields
+
+    def copy(self):
+        """
+        Simulate the copy method of a mule DumpFile.
+        """
+        return MockDumpFile(self.fields[:])
+
+TIMESERIES_LBCODES = [31320]
+@pytest.mark.parametrize(
+    "input_fields, expected_codes",
+    [   #Time series is the first field
+        ([MockField(31320), MockField(1001)], [1001]),
+        #If it is all timeseries
+        ([MockField(31320), MockField(31320)], []),
+        #If none are timeseries
+        ([MockField(1001), MockField(2002)], [1001, 2002]),
+        #If there are no files
+        ([], []),
+    ],
+)
+def test_remove_timeseries(input_fields, expected_codes):
+    """
+    Test the remove_timeseries function with various input scenarios.
+    """
+    mock_dumpfile = MockDumpFile(input_fields)
+    result = remove_timeseries(mock_dumpfile)
+    result_codes = [field.lbcode for field in result.fields]
+
+    assert result_codes == expected_codes
+
+@pytest.fixture
+def mock_metadata():
+    """
+    This function create a callable um metadata
+
+    Outputs
+        list - Command line arguements
     """
 
-    amplitude = 0.4
-    seed = 123
-    rs = create_random_generator(seed)
-    nlon, nlat = mock_perturbation
+    # Mock fields with different lbuser4 values
+    field_theta = MagicMock()
+    field_not_theta = MagicMock()
 
-    perturb = create_perturbation(amplitude, rs, [nlat, nlon])
-    assert perturb.shape ==  (nlat,nlon)
+    # Correctly set the lbuser4 attribute
+    field_theta.lbuser4 = 4
+    field_not_theta.lbuser4 = 56
+    stash_code = 4
+
+    return field_theta, field_not_theta, stash_code
 
 def test_is_field_to_perturb(mock_metadata):
 
@@ -163,8 +152,8 @@ def test_is_field_to_perturb(mock_metadata):
 
     Inputs
         fixture - A fake list of arrays and a fake index
-    Outputs 
-        The results of assertion tests. 
+    Outputs
+        The results of assertion tests.
     """
 
     field_theta, field_not_theta, stash_code = mock_metadata
@@ -173,6 +162,39 @@ def test_is_field_to_perturb(mock_metadata):
     assert is_field_to_perturb(field_theta, stash_code) == True, "field_theta should match the stash_code"
     assert is_field_to_perturb(field_not_theta, stash_code) == False, "field_not_theta should not match the stash_code"
 
+
+#This section tests creating the perturbation
+@pytest.mark.parametrize(
+    "amplitude, shape, nullify_poles, expected_shape",
+    [
+        (0.5, (10, 20), True, (10, 20)),
+        (1.0, (5, 5), False, (5, 5)),
+        (0.3, (3, 7), True, (3, 7)),
+    ],
+)
+
+def test_create_perturbation(amplitude, shape, nullify_poles, expected_shape):
+    """
+    Test the create_perturbation function with different amplitudes, shapes, and nullify_poles settings.
+    """
+    random_seed = np.random.default_rng(43)
+    # Create the perturbation
+    perturbation = create_perturbation(amplitude, random_seed, shape, nullify_poles)
+
+    # Check the shape of the perturbation
+    assert perturbation.shape == expected_shape, "Perturbation shape does not match expected shape"
+
+    # Check that values are within the range [-amplitude, amplitude]
+    assert np.all(perturbation >= -amplitude) and np.all(perturbation <= amplitude), \
+        "Perturbation values exceed specified amplitude range"
+
+    # Check nullification of poles
+    if nullify_poles:
+        assert np.all(perturbation[0, :] == 0) and np.all(perturbation[-1, :] == 0), \
+            "Perturbation poles were not nullified as expected"
+    else:
+        assert not (np.all(perturbation[0, :] == 0) and np.all(perturbation[-1, :] == 0)), \
+            "Perturbation poles should not have been nullified"
 
 def test_operator_initialization():
     """
@@ -192,7 +214,7 @@ def test_operator_initialization():
 
     # Array to add
     array_to_add = np.array([[10, 20], [30, 40]])
-    
+
     # Create the operator
     operator = AdditionOperator(array_to_add)
 
