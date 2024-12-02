@@ -68,20 +68,46 @@ def test_parse_args(monkeypatch, mock_command_line):
     assert args.seed == 23452
     assert args.ifile == "~/example/path/to/the/file/restart_dump.astart"
 
-def test_create_default_outname(monkeypatch, mock_command_line):
+@pytest.mark.parametrize(
+    # description of the arguments
+    "existing_files, filename, expected_output",
+    [
+        # Case 1: Filename with suffix doesn't exist, return filename with suffix
+        ([], "testfilename", "testfilename_perturbed"),
+        # Case 2: Filename with suffix exists, returns filename with suffix appending 1
+        (["testfilename_perturbed"], "testfilename", "testfilename_perturbed1"),
+        # Case 3: Filename with suffix and a few numbered versions exist, returns 
+        # filename with suffix and the first numbered version that doesn't exist
+        (
+            ["testfilename_perturbed", "testfilename_perturbed1", "testfilename_perturbed2"],
+            "testfilename",
+            "testfilename_perturbed3",
+        ),
+    ],
+)
+@patch("os.path.exists")
+def test_create_default_outname_suffix_not_passed(mock_exists, existing_files, filename, expected_output):
     """
-    This function tests the creating the output file name
-    Inputs 
-        fixture - A list of command line arguements
-    Outputs 
-        The results of assertion tests. 
+    Test the function that creates the default output file name, without passing a suffix.
+    3 cases tested with pytest.mark.parametrize.
     """
+    # Mock os.path.exists to simulate the presence of specific files
+    mock_exists.side_effect = lambda f: f in existing_files
+    result = create_default_outname(filename)
+    assert result == expected_output
 
-    monkeypatch.setattr(sys, "argv", mock_command_line)
-    args = parse_args()
-    output_filename = create_default_outname(args.ifile)
-    #asssert output_filename == "~/example/path/to/the/file/restart_dump_perturbed.astart"
-    assert output_filename == "~/example/path/to/the/file/restart_dump.astart_perturbed"
+@patch("os.path.exists")
+def test_create_default_outname_suffix_passed(mock_exists):
+    """
+    Test the function that creates the default output file name, passing a custom suffix.
+    """
+    # Mock os.path.exists to simulate the presence of specific files
+    mock_exists.return_value = False
+    filename = "testfilename"
+    suffix = "testsuffix"
+    result = create_default_outname(filename, suffix)
+    expected_output = "testfilenametestsuffix"
+    assert result == expected_output
 
 def test_remove_timeseries():
 
