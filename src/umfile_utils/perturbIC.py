@@ -32,7 +32,8 @@ def parse_args():
         help = 'The seed value used to generate the random perturbation (must be a non-negative integer).')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
-    parser.add_argument('-o', '--output', dest = output_path, metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
+    parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
+                        help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
     args_parsed = parser.parse_args()
     return args_parsed
 
@@ -179,7 +180,6 @@ def void_validation(*args, **kwargs):
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
-    return
 
 
 def main():
@@ -200,7 +200,7 @@ def main():
     random_generator = create_random_generator(args.seed)
 
     # Skip mule validation if the "--validate" option is provided
-    if args.validate:
+    if not args.validate:
         mule.DumpFile.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
 
@@ -225,5 +225,5 @@ def main():
 
 if __name__== "__main__":
 
-    main()
+    main() # pragma: no cover
 
