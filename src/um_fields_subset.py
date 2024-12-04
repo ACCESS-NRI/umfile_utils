@@ -182,7 +182,7 @@ def include_field(field, prognostic, include_list, exclude_list):
     return False
 
 
-def check_packed_fields(input_file, include_list, prognostic):
+def check_fields_for_masking(input_file, include_list, prognostic):
     """
     Checks if packed fields in the input file require a land-sea mask and modifies
     the include list in place if necessary.
@@ -270,7 +270,7 @@ def main():
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
 
     # Find the fields, if any, that needs a land-sea mask.
-    check_packed_fields(ff, args.include_list, args.prognostic)
+    check_fields_for_masking(ff, args.include_list, args.prognostic)
 
     # Loop over all the fields.
     append_fields(ff, outfile, args.prognostic, args.include_list, args.exclude_list)
