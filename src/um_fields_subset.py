@@ -24,6 +24,8 @@ def parse_arguments():
     ----------
     None
     """
+    parser = argparse.ArgumentParser(description="Subset UM fields based on user-specified options.")
+
     # Positional arguments
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     # Optional arguments
