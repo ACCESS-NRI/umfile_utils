@@ -12,9 +12,8 @@ from __future__ import print_function
 import numpy as np
 import mule
 import argparse
-
-prognostic_stash_codes = [0, 33, 34]
-mask = 30
+PROG_STASH_CODES = (0, 33, 34)
+MASK_CODE = 30
 
 def parse_arguments():
     """
@@ -23,11 +22,16 @@ def parse_arguments():
     Parameters
     ----------
     None
+
+    Returns
+    ----------
+    args_parsed : argsparse.Namespace
+        Argparse namespace containing the parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Subset UM fields based on user-specified options.")
 
     # Positional arguments
-    parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
+    parser.add_argument(dest='ifile', metavar="INPUT_PATH", help='Path to the input file.')
     # Optional arguments
     parser.add_argument('-o', '--output', dest = 'output_path', metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
     parser.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
@@ -41,18 +45,17 @@ def parse_arguments():
     # Parse arguments
     args_parsed = parser.parse_args()
 
-    # Convert from string list to a list of integers
+    # Convert from string to int
     args_parsed.include_list = [int(v) for v in args_parsed.include_list.split(",")] if args_parsed.include_list else []
     args_parsed.exclude_list = [int(x) for x in args_parsed.exclude_list.split(",")] if args_parsed.exclude_list else []
 
 
     # Check if neither -v nor -x is provided
-    if not args_parsed.include_list and not args_parsed.exclude_list:
-        raise argparse.ArgumentError(None, "Error: Either -v or -x must be specified.")
+    if not args_parsed.include_list and not args_parsed.exclude_list and not args_parsed.prognostic:
+        raise argparse.ArgumentError(None, "Error: Either -v or -x or -p must be specified.")
 
     # Return arguments
     return args_parsed
-
 def validate_arguments(include_list, exclude_list, prognostic):
     """
     Checks that the inclusion and exclusion lists are not provided simultaneously
@@ -66,21 +69,26 @@ def validate_arguments(include_list, exclude_list, prognostic):
             List of STASH codes for fields  to exclude.
     prognostic : bool
                  Whether to include only prognostic fields.
+
     Returns
     ----------
     None
     """
+
     if include_list and exclude_list:
         raise Exception("Error: -x and -v are mutually exclusive")
 
     if prognostic and (include_list or exclude_list):
         raise Exception("Error: -p incompatible with explicit list of variables")
-        
+
+
 def void_validation(*args, **kwargs):
     """
-    Don't perform the mule validation, but print a message to inform that validation has been skipped.
+    Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
+    return
+
 
 def initialize_output_file(ff):
     """
@@ -124,29 +132,11 @@ def create_default_outname(f, suffix="_subset"):
             num += 1
     return f"{output_filename}{num}"
 
-def is_prognostic(field):
+
+def filter_fields(input_file, prognostic, include_list, exclude_list):
     """
-    Check if a field is prognostic.
+    Creates a list of fields from the input file that should be included based on user conditions.
 
-    A field is considered prognostic if its `lbuser4` attribute matches one of the values
-    in the list [0, 33, 34], which correspond to the section numbers for prognostic variables.
-
-    Parameters
-    ----------
-    field : object
-        A field object with an `lbuser4` attribute that is checked to determine if it is prognostic.
-
-    Returns
-    -------
-    bool
-        True if the field is prognostic (i.e., its `lbuser4` is in [0, 33, 34]), False otherwise.
-    """
-
-    return field.lbuser4 in prognostic_stash_codes
-
-def include_field(field, prognostic, include_list, exclude_list):
-    """
-    Determines if a field should be included based on the provided conditions.
     Parameters
     ----------
     field : object
@@ -160,60 +150,69 @@ def include_field(field, prognostic, include_list, exclude_list):
 
     Returns
     -------
-    bool
-        True if the field should be included, False otherwise.
+    list
+        A list of fields that need to be in the file
     """
-    # Check if the field is part of the exclusion list
-    if field.stash in exclude_list:
-        return False
+    filtered_fields = []
+    for field in input_file.fields:
 
-    # Check if the field is part of the inclusion list (if specified)
-    if include_list and field.stash not in include_list:
-        return False
+        # Check if the field is part of the exclusion list
+        if field.stash in exclude_list:
+            continue
+            
+        # Check if the field is part of the inclusion list (if specified)
+        if include_list  and field.stash in include_list:
+            filtered_fields.append(field)
 
-    # If no inclusion or exclusion list, include the field based on its type
-    if prognostic and field.is_prognostic():
-        return True
-        
-    # Include all fields if no filters are applied
-    if not prognostic and not include_list and not exclude_list:
-        return True  
+        # If no inclusion or exclusion list, include the field based on its type
+        elif prognostic and field.lbuser4 in PROG_STASH_CODES:
+            filtered_fields.append(field)
 
-    return False
+        elif not prognostic and not include_list and not exclude_list:
+            filtered_fields.append(field)
+
+    return filtered_fields
 
 
-def check_fields_for_masking(input_file, include_list, prognostic):
+def check_packed_fields(filtered_fields):
     """
     Checks if packed fields in the input file require a land-sea mask and modifies
-    the include list in place if necessary.
+    the include list if necessary.
 
     Parameters
     ----------
-    input_file : mule.DumpFile
-    The input file containing the fields to be checked.
-    include_list : list of int
+    filtered_fields : list of int
         A list of STASH item codes to include in the output. If packed fields require a
         land-sea mask, STASH item code 30 will be added to this list.
-    prognostic : bool
-        A flag indicating whether only prognostic fields should be considered for inclusion.
 
     Returns
     -------
     None
+        This function modifies the `include_list` in place by appending the land-sea mask
+        (STASH code 30) if required.
     """
-
+    print('calling check_packed')
     needmask, masksaved = False, False
-    for field in input_file.fields:
-        if include_field(field, prognostic, include_list, []):
-            # Check packing requirements and land-sea mask presence and adjust if necessary.
-            needmask |= (field.lbpack == 2 and field.lblev in (1, 2))
-            masksaved |= (field.lbuser4 == mask)
+    print(filtered_fields)
 
-    if include_list and needmask and not masksaved:
-        print("Adding land-sea mask to output fields because of packed data.")
-        include_list.append(30)
+    for field in filtered_fields:
+        print(field.stash, field.lbpack, field.lblev)
 
-def append_fields(input_file, outfile, prognostic, include_list, exclude_list):
+        needmask |= (field.lbpack == 2 and field.lblev in (1,2))
+        masksaved |= (field.stash == MASK_CODE)
+
+    if needmask and not masksaved:
+        print('adding mask')
+        filtered_fields.append(30)
+
+    else:
+        print('not adding mask')
+        print(masksaved)
+        print(needmask)
+
+    return filtered_fields
+
+def append_fields(outfile, filtered_fields):
     """
     Copies fields from the input UM file to the output UM file based on inclusion and exclusion criteria.
 
@@ -232,9 +231,6 @@ def append_fields(input_file, outfile, prognostic, include_list, exclude_list):
         A list of STASH item codes to include. Only these fields will be copied to the output file.
 
     exclude_list : list of int
-    A list of STASH item codes to include. Only these fields will be copied to the output file.
-
-    exclude_list : list of int
         A list of STASH item codes to exclude. Fields with these item codes will not be copied to the output file.
 
     Returns
@@ -242,17 +238,13 @@ def append_fields(input_file, outfile, prognostic, include_list, exclude_list):
     None
         This function modifies the output_file in place and does not return any value.
     """
-    #Loop through all the fields
-    for field in input_file.fields:
-        # Check if the field should be included or excluded.
-        if include_field(field, prognostic, include_list, exclude_list):
-            outfile.fields.append(field.copy())
+    for field in filtered_fields:
+        # Ad to the outfile fields 
+        outfile.fields.append(field.copy())
 
 
 def main():
-    """
-    Select or remove a subset of fields from a UM fields file.
-    """
+
     # Parse the inputs and validate that they do not xlist or vlist are given.
     args = parse_arguments()
     validate_arguments(args.include_list, args.exclude_list, args.prognostic)
@@ -269,13 +261,16 @@ def main():
     # Create the output filename.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
 
+    #Create list of fields that meet all the user defined conditions
+    filtered_fields = filter_fields(ff, args.prognostic, args.include_list, args.exclude_list)
+
     # Find the fields, if any, that needs a land-sea mask.
-    check_fields_for_masking(ff, args.include_list, args.prognostic)
+    filtered_fields = check_packed_fields(filtered_fields)
 
     # Loop over all the fields.
-    append_fields(ff, outfile, args.prognostic, args.include_list, args.exclude_list)
+    append_fields(outfile, filtered_fields)
 
     outfile.to_file(output_filename)
-
+    
 if __name__== "__main__":
     main()
