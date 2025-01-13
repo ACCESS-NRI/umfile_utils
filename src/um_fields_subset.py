@@ -11,6 +11,7 @@
 from __future__ import print_function
 import numpy as np
 import mule
+import os
 import argparse
 PROG_STASH_CODES = (0, 33, 34)
 MASK_CODE = 30
