@@ -11,6 +11,7 @@
 from __future__ import print_function
 import numpy as np
 import mule
+import os
 import argparse
 PROG_STASH_CODES = (0, 33, 34)
 MASK_CODE = 30
@@ -107,7 +108,7 @@ def initialize_output_file(ff):
     file_copy.fields = []
     return file_copy
 
-def create_default_outname(f, suffix="_subset"):
+def create_default_outname(filename, suffix="_subset"):
     """
     Create a default output filename by appending a suffix to the input filename.
     If an output filename already exists, a number will be appended to produce a unique output filename.
