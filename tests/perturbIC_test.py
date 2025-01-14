@@ -38,7 +38,7 @@ def create_mock_umfile():
 
     return _mock_umfile
 
-
+#This section sets up the testing for the parse args
 @pytest.fixture
 def create_mock_field():
     """Factory function to create a mule field mock object."""
@@ -134,6 +134,7 @@ def test_remove_timeseries_(
     assert result.fields == [mock_umfile.fields[ind] for ind in result_fields_indeces]
 
 
+#This section tests the output file creation. 
 @pytest.mark.parametrize(
     # description of the arguments
     "existing_files, filename, expected_output",
