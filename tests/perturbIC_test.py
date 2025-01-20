@@ -25,7 +25,16 @@ from umfile_utils.perturbIC import (
 # Hypothesis settings to reuse in multiple tests
 ARRAY_SHAPES = stnp.array_shapes(min_dims=2, max_dims=2, min_side=1, max_side=200)
 ARRAY_DTYPES = stnp.floating_dtypes(sizes=(32, 64))
-ARRAY_ELEMENTS = st.floats(min_value=-1e10, max_value=1e10)  # Set to avoid overflow
+# Set to avoid overflow
+ARRAY_ELEMENTS = st.floats(
+    min_value=-1e10,
+    max_value=1e10,
+    allow_nan=False,                # Disallow NaN
+    allow_infinity=False,           # Disallow Infinity
+    allow_subnormal=False,          # Disallow subnormal floats
+    width=32                        # Ensure compatibility with float32 or float64
+) 
+
 # Set max examples for hypothesis globally
 settings.register_profile("default", max_examples=30)
 settings.load_profile("default")
