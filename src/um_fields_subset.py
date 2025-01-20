@@ -215,20 +215,11 @@ def append_fields(outfile, filtered_fields):
 
     Parameters
     ----------
-    input_file : mule.DumpFile
-        The input UM file containing the fields to be copied.
-
     outfile : mule.DumpFile
         The output UM file to which the selected fields will be copied.
 
-    prognostic : bool
-        If True, only prognostic fields will be copied.
-
-    include_list : list of int
-        A list of STASH item codes to include. Only these fields will be copied to the output file.
-
-    exclude_list : list of int
-        A list of STASH item codes to exclude. Fields with these item codes will not be copied to the output file.
+    filtered_fields : list of int
+        A list of STASH item codes to save to the new file.
 
     Returns
     -------
@@ -236,7 +227,7 @@ def append_fields(outfile, filtered_fields):
         This function modifies the output_file in place and does not return any value.
     """
     for field in filtered_fields:
-        # Ad to the outfile fields 
+        # Add to the outfile fields 
         outfile.fields.append(field.copy())
 
 def main():
