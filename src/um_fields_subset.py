@@ -13,6 +13,7 @@ import numpy as np
 import mule
 import os
 import argparse
+
 PROG_STASH_CODES = (0, 33, 34)
 MASK_CODE = 30
 
@@ -50,7 +51,6 @@ def parse_arguments():
     args_parsed.include_list = [int(v) for v in args_parsed.include_list.split(",")] if args_parsed.include_list else []
     args_parsed.exclude_list = [int(x) for x in args_parsed.exclude_list.split(",")] if args_parsed.exclude_list else []
 
-
     # Check if neither -v nor -x is provided
     if not args_parsed.include_list and not args_parsed.exclude_list and not args_parsed.prognostic:
         raise argparse.ArgumentError(None, "Error: Either -v or -x or -p must be specified.")
@@ -60,8 +60,8 @@ def parse_arguments():
     
 def validate_arguments(include_list, exclude_list, prognostic):
     """
-    Checks that the inclusion and exclusion lists are not provided simultaneously
-    and ensures that the 'prognostic' flag is not used with explicit inclusion or exclusion lists.
+    Checks that the inclusion and exclusion lists are not provided simultaneously and 
+    ensures that the 'prognostic' flag is not used with explicit inclusion or exclusion lists.
 
     Parameters
     ----------
@@ -76,7 +76,6 @@ def validate_arguments(include_list, exclude_list, prognostic):
     ----------
     None
     """
-
     if include_list and exclude_list:
         raise Exception("Error: -x and -v are mutually exclusive")
 
@@ -139,8 +138,8 @@ def filter_fields(input_file, prognostic, include_list, exclude_list):
 
     Parameters
     ----------
-    field : object
-        The field object to be checked.
+    input_file : object
+        The loaded dump fields file
     prognostic : bool
         A boolean flag indicating if only prognostic fields should be included.
     include_list : list of int
