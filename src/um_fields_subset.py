@@ -180,8 +180,7 @@ def check_packed_fields(filtered_fields):
     Parameters
     ----------
     filtered_fields : list of int
-        A list of STASH item codes to include in the output. If packed fields require a
-        land-sea mask, STASH item code 30 will be added to this list.
+        A list of STASH item codes to include in the output.
 
     Returns
     -------
