@@ -57,6 +57,7 @@ def parse_arguments():
 
     # Return arguments
     return args_parsed
+    
 def validate_arguments(include_list, exclude_list, prognostic):
     """
     Checks that the inclusion and exclusion lists are not provided simultaneously
@@ -82,14 +83,12 @@ def validate_arguments(include_list, exclude_list, prognostic):
     if prognostic and (include_list or exclude_list):
         raise Exception("Error: -p incompatible with explicit list of variables")
 
-
 def void_validation(*args, **kwargs):
     """
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
     return
-
 
 def initialize_output_file(ff):
     """
@@ -174,7 +173,6 @@ def filter_fields(input_file, prognostic, include_list, exclude_list):
 
     return filtered_fields
 
-
 def check_packed_fields(filtered_fields):
     """
     Checks if packed fields in the input file require a land-sea mask and modifies
@@ -243,32 +241,31 @@ def append_fields(outfile, filtered_fields):
         # Ad to the outfile fields 
         outfile.fields.append(field.copy())
 
-
 def main():
 
-    # Parse the inputs and validate that they do not xlist or vlist are given.
+    # Parse the inputs and validates that either xlist or vlist are given.
     args = parse_arguments()
     validate_arguments(args.include_list, args.exclude_list, args.prognostic)
 
-    # Skip the mule validation if the "--validate" option is provided.
+    # Skips the mule validation if the "--validate" option is provided.
     if args.validate:
         mule.DumpFile.validate = void_validation
 
     ff = mule.DumpFile.from_file(args.ifile)
 
-    # Create the output UM file that will be saved.
+    # Initializes the output UM file that will be saved.
     outfile = initialize_output_file(ff)
 
-    # Create the output filename.
+    # Create the new output filename if one isn't already given.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
 
-    #Create list of fields that meet all the user defined conditions
+    #Create list of fields that meet all the user defined conditions to either include or exclude
     filtered_fields = filter_fields(ff, args.prognostic, args.include_list, args.exclude_list)
 
-    # Find the fields, if any, that needs a land-sea mask.
+    # Checks if any of the choosen fields need a land-sea mas and adds it if so.
     filtered_fields = check_packed_fields(filtered_fields)
 
-    # Loop over all the fields.
+    # Loops over all the fields.
     append_fields(outfile, filtered_fields)
 
     outfile.to_file(output_filename)
