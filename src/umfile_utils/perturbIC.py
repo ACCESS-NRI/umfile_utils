@@ -201,7 +201,7 @@ def main():
 
     # Skip mule validation if the "--validate" option is provided
     if not args.validate:
-        mule.DumpFile.validate = void_validation
+        ff.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
 
 
