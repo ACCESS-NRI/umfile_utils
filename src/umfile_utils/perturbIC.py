@@ -199,15 +199,15 @@ def main():
     # Create the random generator.
     random_generator = create_random_generator(args.seed)
 
-    # Skip mule validation if the "--validate" option is provided
-    if not args.validate:
-        ff.validate = void_validation
     ff_raw = mule.DumpFile.from_file(args.ifile)
-
 
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
 
+    # Skip mule validation if the "--validate" option is provided
+    if not args.validate:
+        ff.validate = void_validation()
+        
     # loop through the fields
     for ifield, field in enumerate(ff.fields):
         if is_field_to_perturb(field, STASH_THETA):
