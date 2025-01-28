@@ -1,0 +1,43 @@
+[project]
+name = "umfile-utils"
+dynamic = ["version"]
+authors = [
+  {name = "Martin Dix", email="martin.dix@anu.edu.au"},
+  {name = "Lindsey Oberhelman", email="lindsey.oberhelman@anu.edu.au"},
+  {name = "Davide Marchegiani", email="davide.marchegiani@anu.edu.au"},
+]
+description = "Collection of tools for UM fieldsfiles."
+license = { file = "LICENSE" }
+keywords = ["UM", "UM utilities", "UM fields files", "umfile_utils"]
+requires-python = ">=3.10"
+dependencies = [
+    "mule",
+    "numpy <2",
+    "versioneer",
+]
+
+[project.urls]
+Repository = "https://github.com/ACCESS-NRI/umfile_utils"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>64", 
+    "versioneer[toml]"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/umfile_utils/_version.py"
+versionfile_build = "umfile_utils/_version.py"
+tag_prefix = ""
+parentdir_prefix = "umfile-utils-"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+addopts = "--cov=src --cov-report=term-missing"

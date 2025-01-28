@@ -1,0 +1,18 @@
+name: umfile-utils-dev
+channels:
+  - accessnri
+  - conda-forge
+  - coecms
+  - nodefaults
+dependencies:
+  - python >=3.10
+  - pytest
+  - xarray
+  - mule
+  - numpy < 2
+  - versioneer
+  - hypothesis
+  - ipykernel
+  - pytest-cov
+  - pip
+  
