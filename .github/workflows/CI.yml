@@ -41,5 +41,5 @@ jobs:
 
       - name: Run tests
         shell: bash -l {0}
-        run: python -m pytest --cov=src --cov-report=html -s tests
+        run: python -m pytest
       
