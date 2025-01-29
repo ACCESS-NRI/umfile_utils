@@ -9,14 +9,13 @@
 # Martin Dix martin.dix@csiro.au
 
 from __future__ import print_function
-import numpy as np
 import mule
 import os
 import argparse
 PROG_STASH_CODES = (0, 33, 34)
 MASK_CODE = 30
 
-def parse_arguments():
+def parse_args():
     """
     Parse command-line arguments.
 
@@ -34,7 +33,7 @@ def parse_arguments():
     # Positional arguments
     parser.add_argument(dest='ifile', metavar="INPUT_PATH", help='Path to the input file.')
     # Optional arguments
-    parser.add_argument('-o', '--output', dest = 'output_path', metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
+    parser.add_argument('-o', '--output', dest = 'output_path', metavar="OUTPUT_PATH", help='Path to the output file. If omitted, the default output file is created by appending "_subset" to the input path.')
     parser.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
                         help="Include only prognostic (section 0,33,34) variables")
     parser.add_argument('-v', '--incude', dest='include_list', type=str,
@@ -57,6 +56,7 @@ def parse_arguments():
 
     # Return arguments
     return args_parsed
+    
 def validate_arguments(include_list, exclude_list, prognostic):
     """
     Checks that the inclusion and exclusion lists are not provided simultaneously
@@ -88,7 +88,6 @@ def void_validation(*args, **kwargs):
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
-    return
 
 
 def initialize_output_file(ff):
@@ -248,16 +247,13 @@ def main():
 
     # Parse the inputs and validate that they do not xlist or vlist are given.
     args = parse_arguments()
-    validate_arguments(args.include_list, args.exclude_list, args.prognostic)
 
     # Skip the mule validation if the "--validate" option is provided.
     if args.validate:
         mule.DumpFile.validate = void_validation
 
-    ff = mule.DumpFile.from_file(args.ifile)
+    ff = mule.load_umfile(args.ifile)
 
-    # Create the output UM file that will be saved.
-    outfile = initialize_output_file(ff)
 
     # Create the output filename.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
