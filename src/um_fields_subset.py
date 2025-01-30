@@ -58,30 +58,6 @@ def parse_args():
     # Return arguments
     return args_parsed
     
-def validate_arguments(include_list, exclude_list, prognostic):
-    """
-    Checks that the inclusion and exclusion lists are not provided simultaneously
-    and ensures that the 'prognostic' flag is not used with explicit inclusion or exclusion lists.
-
-    Parameters
-    ----------
-    include_list : list of int
-            List of STASH codes for fields to include.
-    exclude_list : list of int
-            List of STASH codes for fields  to exclude.
-    prognostic : bool
-                 Whether to include only prognostic fields.
-
-    Returns
-    ----------
-    None
-    """
-
-    if include_list and exclude_list:
-        raise Exception("Error: -x and -v are mutually exclusive")
-
-    if prognostic and (include_list or exclude_list):
-        raise Exception("Error: -p incompatible with explicit list of variables")
 
 
 def void_validation(*args, **kwargs):
