@@ -11,7 +11,8 @@
 import mule
 import os
 import argparse
-PROG_STASH_CODES = (0, 33, 34)
+from itertools import chain
+PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 MASK_CODE = 30
 
 def parse_args():
