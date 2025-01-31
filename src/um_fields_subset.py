@@ -146,44 +146,6 @@ def filter_fields(input_file, prognostic, include_list, exclude_list):
     return filtered_fields
 
 
-def check_packed_fields(filtered_fields):
-    """
-    Checks if packed fields in the input file require a land-sea mask and modifies
-    the include list if necessary.
-
-    Parameters
-    ----------
-    filtered_fields : list of int
-        A list of STASH item codes to include in the output. If packed fields require a
-        land-sea mask, STASH item code 30 will be added to this list.
-
-    Returns
-    -------
-    None
-        This function modifies the `include_list` in place by appending the land-sea mask
-        (STASH code 30) if required.
-    """
-    print('calling check_packed')
-    needmask, masksaved = False, False
-    print(filtered_fields)
-
-    for field in filtered_fields:
-        print(field.stash, field.lbpack, field.lblev)
-
-        needmask |= (field.lbpack == 2 and field.lblev in (1,2))
-        masksaved |= (field.stash == MASK_CODE)
-
-    if needmask and not masksaved:
-        print('adding mask')
-        filtered_fields.append(30)
-
-    else:
-        print('not adding mask')
-        print(masksaved)
-        print(needmask)
-
-    return filtered_fields
-
 def append_fields(outfile, filtered_fields):
     """
     Copies fields from the input UM file to the output UM file based on inclusion and exclusion criteria.
