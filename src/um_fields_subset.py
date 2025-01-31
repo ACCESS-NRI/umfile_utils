@@ -105,45 +105,37 @@ def create_default_outname(filename, suffix="_subset"):
     return f"{output_filename}{num}"
 
 
-def filter_fields(input_file, prognostic, include_list, exclude_list):
+def include_fields(fields, stash_list):
+    return [f.copy() for f in fields if f.lbuser4 in stash_list]
+
+def exclude_fields(fields, stash_list):
+    return [f.copy() for f in fields if f.lbuser4 not in stash_list]
+
+def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
     """
-    Creates a list of fields from the input file that should be included based on user conditions.
+    Creates a new mule fieldsfile from the input_file, by filtering its fields based on the values of prognostic, include_list and eclude_list.
 
     Parameters
     ----------
-    field : object
-        The field object to be checked.
+    input_file : mule.ff.FieldsFile
+        The mule fieldsfile to be filtered.
     prognostic : bool
         A boolean flag indicating if only prognostic fields should be included.
-    include_list : list of int
+    include_list : list of int or None
         A list of STASH item codes to include.
-    exclude_list : list of int
+    exclude_list : list of int or None
         A list of STASH item codes to exclude.
 
     Returns
     -------
-    list
-        A list of fields that need to be in the file
+    filtered_file : mule.ff.FieldsFile
+        The filtered mule fieldsfile.
     """
-    filtered_fields = []
-    for field in input_file.fields:
-
-        # Check if the field is part of the exclusion list
-        if field.stash in exclude_list:
-            continue
-            
-        # Check if the field is part of the inclusion list (if specified)
-        if include_list  and field.stash in include_list:
-            filtered_fields.append(field)
-
-        # If no inclusion or exclusion list, include the field based on its type
-        elif prognostic and field.lbuser4 in PROG_STASH_CODES:
-            filtered_fields.append(field)
-
-        elif not prognostic and not include_list and not exclude_list:
-            filtered_fields.append(field)
-
-    return filtered_fields
+    filtered_file = input_file.copy()
+    if prognostic:
+        include_list = PROGNOSTIC_STASH_CODES
+    filtered_file.fields = include_fields(input_file.fields, include_list) if include_list is not `None` else exclude_fields(input_file.fields, exclude_list)
+    return filtered_file
 
 
 def append_fields(outfile, filtered_fields):
