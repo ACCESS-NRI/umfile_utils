@@ -106,9 +106,37 @@ def create_default_outname(filename, suffix="_subset"):
 
 
 def include_fields(fields, stash_list):
+    """
+    Checks if the field is in the include list and if so provides a copy of that field.
+
+    Parameters
+    __________
+    fields : mule.ff.FieldsFile.fields 
+        All the fields from the fields file.
+    stash_list : list of int
+        A list of STASH item codes to include.
+    
+    Returns
+    -------
+        A list of copies of the fields stash_list to include.
+    """
     return [f.copy() for f in fields if f.lbuser4 in stash_list]
 
 def exclude_fields(fields, stash_list):
+    """
+    Checks if the field is not in the exclude list and if so provides a copy of that field.
+
+    Parameters
+    __________
+    fields : mule.ff.FieldsFile.fields 
+        All the fields from the fields file.
+    stash_list : list of int
+        A list of STASH item codes to exclude.
+    
+    Returns
+    -------
+        A list of copies of the fields stash_list to include.
+    """
     return [f.copy() for f in fields if f.lbuser4 not in stash_list]
 
 def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
