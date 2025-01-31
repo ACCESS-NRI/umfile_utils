@@ -50,9 +50,6 @@ def parse_args():
     args_parsed.exclude_list = [int(x) for x in args_parsed.exclude_list.split(",")] if args_parsed.exclude_list else []
 
 
-    # Check if neither -v nor -x is provided
-    if not args_parsed.include_list and not args_parsed.exclude_list and not args_parsed.prognostic:
-        raise argparse.ArgumentError(None, "Error: Either -v or -x or -p must be specified.")
 
     # Return arguments
     return args_parsed
@@ -80,7 +77,6 @@ def initialize_output_file(ff):
         A new copy of the input UM file with its fields initialized to an empty list.
     """
     file_copy = ff.copy()
-    file_copy.fields = []
     return file_copy
 
 def create_default_outname(filename, suffix="_subset"):
@@ -226,7 +222,7 @@ def main():
 
     # Skip the mule validation if the "--validate" option is provided.
     if args.validate:
-        mule.DumpFile.validate = void_validation
+        filtered_file.validate = void_validation
 
     ff = mule.load_umfile(args.ifile)
 
@@ -234,14 +230,8 @@ def main():
     # Create the output filename.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
 
-    #Create list of fields that meet all the user defined conditions
-    filtered_fields = filter_fields(ff, args.prognostic, args.include_list, args.exclude_list)
-
-    # Find the fields, if any, that needs a land-sea mask.
-    filtered_fields = check_packed_fields(filtered_fields)
-
-    # Loop over all the fields.
-    append_fields(outfile, filtered_fields)
+    # filter the fieldsfile
+    filtered_file = filter_fieldsfile(ff, args.prognostic, args.include_list, args.exclude_list)
 
     outfile.to_file(output_filename)
     
