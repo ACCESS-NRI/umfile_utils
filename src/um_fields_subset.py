@@ -52,11 +52,6 @@ def parse_args():
     # Parse arguments
     args_parsed = parser.parse_args()
 
-    # Convert from string to int
-    
-
-
-
     # Return arguments
     return args_parsed
     
