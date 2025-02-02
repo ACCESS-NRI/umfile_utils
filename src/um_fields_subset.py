@@ -14,6 +14,13 @@ import argparse
 from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
+def convert_to_list(value: str):
+    """Convert a comma-separated string into a list of integers."""
+    try:
+        return [int(v) for v in value.split(",")]
+    except ValueError:
+        raise argparse.ArgumentTypeError("All values must be integers.")
+
 def parse_args():
     """
     Parse command-line arguments.
@@ -36,9 +43,9 @@ def parse_args():
     meg = parser.add_mutually_exclusive_group(required=True)
     meg.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
                         help="Only include prognostic variables (sections 0, 33 and 34). Cannot be used together with --include or --exclude.")
-    meg.add_argument('--include', dest='include_list', type=str, metavar="STASH_CODE",
+    meg.add_argument('--include', dest='include_list',  type=convert_to_list, metavar="STASH_CODE",
                         help="Comma-separated list of STASH codes to include in the output file. Any STASH code present in the input file, but not contained in this STASH code list, will not be present in the output file. Cannot be used together with --prognostic or --exclude.")
-    meg.add_argument('--exclude', dest='exclude_list', type=str, metavar="STASH_CODE"
+    meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODE"
                         help="Comma-separated list of STASH codes to exclude from the output file. All STASH codes present in the input file, but not contained in this STASH code list, will be present in the output file. Cannot be used together with --prognostic or --include.")
     parser.add_argument('--validate', action='store_true',
                         help='Validate the output fields file using mule validation.')
@@ -46,8 +53,7 @@ def parse_args():
     args_parsed = parser.parse_args()
 
     # Convert from string to int
-    args_parsed.include_list = [int(v) for v in args_parsed.include_list.split(",")] if args_parsed.include_list else []
-    args_parsed.exclude_list = [int(x) for x in args_parsed.exclude_list.split(",")] if args_parsed.exclude_list else []
+    
 
 
 
