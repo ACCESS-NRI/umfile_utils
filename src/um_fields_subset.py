@@ -44,9 +44,9 @@ def parse_args():
     meg = parser.add_mutually_exclusive_group(required=True)
     meg.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
                         help="Only include prognostic variables (sections 0, 33 and 34). Cannot be used together with --include or --exclude.")
-    meg.add_argument('--include', dest='include_list',  type=convert_to_list, metavar="STASH_CODE",
+    meg.add_argument('--include', dest='include_list',  type=convert_to_list, metavar="STASH_CODES",
                         help="Comma-separated list of STASH codes to include in the output file. Any STASH code present in the input file, but not contained in this STASH code list, will not be present in the output file. Cannot be used together with --prognostic or --exclude.")
-    meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODE",
+    meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODES",
                         help="Comma-separated list of STASH codes to exclude from the output file. All STASH codes present in the input file, but not contained in this STASH code list, will be present in the output file. Cannot be used together with --prognostic or --include.")
     parser.add_argument('--validate', action='store_true',
                         help='Validate the output fields file using mule validation.')
@@ -101,24 +101,23 @@ def field_not_present_warning(fields, stash_list):
     fields : mule.ff.FieldsFile.fields
         All the fields from the fields file.
 
-    stash_list :  list of int
-        Either the exclude or include STASH item code list.
+    stash_list :  set of int
     Returns
     _______
-        None - gives a warning.
+        None
 
     """
 
     existing_codes = {f.lbuser4 for f in fields}
-    missing_codes = [code for code in stash_list if code not in existing_codes]
+    missing_codes = stash_list - existing_codes
 
     if missing_codes:
-        warnings.warn(f"Warning: STASH code(s): {missing_codes} is(are) not present in the input file.")
+        warnings.warn(f"The following STASH codes are not found in the input file: {missing_codes}")
 
 
 def include_fields(fields, stash_list):
     """
-    Checks if the field is in the include list and if so provides a copy of that field.
+    Return a subset of the input fields, containing only the ones having a stash code included in stash_list. Raise a warning if a stash code included in stash_list is not present in the input fields.
 
     Parameters
     __________
@@ -129,7 +128,8 @@ def include_fields(fields, stash_list):
     
     Returns
     -------
-        A list of copies of the fields stash_list to include.
+        list of mule.ff.FieldsFile.fields
+        The subset of fields only containing the ones to be included.
     """
 
     field_not_present_warning(fields, stash_list)
@@ -137,7 +137,7 @@ def include_fields(fields, stash_list):
 
 def exclude_fields(fields, stash_list):
     """
-    Checks if the field is not in the exclude list and if so provides a copy of that field.
+    Return a subset of the input fields, containing only the ones having a stash code not included in stash_list. Raise a warning if a stash code included in stash_list is not present in the input fields.
 
     Parameters
     __________
