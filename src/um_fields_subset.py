@@ -113,7 +113,7 @@ def field_not_present_warning(fields, stash_list):
     missing_codes = [code for code in stash_list if code not in existing_codes]
 
     if missing_codes:
-        warnings.warn(f"Warning: STASH code(s): {missing_codes} is(are) not present in the input file.")
+        warnings.warn(f"The following STASH codes are not found in the input file: {missing_codes}")
 
 
 def include_fields(fields, stash_list):
