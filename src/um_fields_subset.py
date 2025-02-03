@@ -105,7 +105,7 @@ def field_not_present_warning(fields, stash_list):
         Either the exclude or include STASH item code list.
     Returns
     _______
-        None - gives a warning.
+        None
 
     """
 
