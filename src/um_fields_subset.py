@@ -137,7 +137,7 @@ def include_fields(fields, stash_list):
 
 def exclude_fields(fields, stash_list):
     """
-    Checks if the field is not in the exclude list and if so provides a copy of that field.
+    Return a subset of the input fields, containing only the ones having a stash code not included in stash_list. Raise a warning if a stash code included in stash_list is not present in the input fields.
 
     Parameters
     __________
