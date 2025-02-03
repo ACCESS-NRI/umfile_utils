@@ -11,6 +11,7 @@
 import mule
 import os
 import argparse
+import warnings
 from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
@@ -45,40 +46,24 @@ def parse_args():
                         help="Only include prognostic variables (sections 0, 33 and 34). Cannot be used together with --include or --exclude.")
     meg.add_argument('--include', dest='include_list',  type=convert_to_list, metavar="STASH_CODE",
                         help="Comma-separated list of STASH codes to include in the output file. Any STASH code present in the input file, but not contained in this STASH code list, will not be present in the output file. Cannot be used together with --prognostic or --exclude.")
-    meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODE"
+    meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODE",
                         help="Comma-separated list of STASH codes to exclude from the output file. All STASH codes present in the input file, but not contained in this STASH code list, will be present in the output file. Cannot be used together with --prognostic or --include.")
     parser.add_argument('--validate', action='store_true',
                         help='Validate the output fields file using mule validation.')
     # Parse arguments
     args_parsed = parser.parse_args()
-
+    
     # Return arguments
     return args_parsed
-    
 
 
 def void_validation(*args, **kwargs):
     """
     Don't perform the validation, but print a message to inform that validation has been skipped.
     """
+
     print('Skipping mule validation. To enable the validation, run using the "--validate" option.')
 
-
-def initialize_output_file(ff):
-    """
-    Initialize the output UM file by copying the input file and preparing it for output.
-
-    Parameters
-    ----------
-    ff : mule.DumpFile
-        The input UM file object to be copied.
-    Returns
-    -------
-    mule.DumpFile
-        A new copy of the input UM file with its fields initialized to an empty list.
-    """
-    file_copy = ff.copy()
-    return file_copy
 
 def create_default_outname(filename, suffix="_subset"):
     """
@@ -97,6 +82,7 @@ def create_default_outname(filename, suffix="_subset"):
     output_filename: str
         The default output filename.
     """
+
     output_filename = f"{filename}{suffix}"
     num=""
     if os.path.exists(output_filename):
@@ -104,6 +90,30 @@ def create_default_outname(filename, suffix="_subset"):
         while os.path.exists(f"{output_filename}{num}"):
             num += 1
     return f"{output_filename}{num}"
+    
+def field_not_present_warning(fields, stash_list):
+    """
+    Checks that the fields in the either list provided are present in the file and provides a warning if not.
+    
+    Parameters
+    __________
+
+    fields : mule.ff.FieldsFile.fields
+        All the fields from the fields file.
+
+    stash_list :  list of int
+        Either the exclude or include STASH item code list.
+    Returns
+    _______
+        None - gives a warning.
+
+    """
+
+    existing_codes = {f.lbuser4 for f in fields}
+    missing_codes = [code for code in stash_list if code not in existing_codes]
+
+    if missing_codes:
+        warnings.warn(f"Warning: STASH code(s): {missing_codes} is(are) not present in the input file.")
 
 
 def include_fields(fields, stash_list):
@@ -121,6 +131,8 @@ def include_fields(fields, stash_list):
     -------
         A list of copies of the fields stash_list to include.
     """
+
+    field_not_present_warning(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 in stash_list]
 
 def exclude_fields(fields, stash_list):
@@ -138,6 +150,8 @@ def exclude_fields(fields, stash_list):
     -------
         A list of copies of the fields stash_list to include.
     """
+
+    field_not_present_warning(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 not in stash_list]
 
 def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
@@ -160,26 +174,20 @@ def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
     filtered_file : mule.ff.FieldsFile
         The filtered mule fieldsfile.
     """
+
     filtered_file = input_file.copy()
     if prognostic:
         include_list = PROGNOSTIC_STASH_CODES
-    filtered_file.fields = include_fields(input_file.fields, include_list) if include_list is not `None` else exclude_fields(input_file.fields, exclude_list)
+
+    filtered_file.fields = include_fields(input_file.fields, include_list) if include_list is not None else exclude_fields(input_file.fields, exclude_list)
     return filtered_file
-
-
-
-
+    
 def main():
 
     # Parse the inputs and validate that they do not xlist or vlist are given.
-    args = parse_arguments()
+    args = parse_args()
 
-    # Skip the mule validation if the "--validate" option is provided.
-    if args.validate:
-        filtered_file.validate = void_validation
-
-    ff = mule.load_umfile(args.ifile)
-
+    ff = mule.DumpFile.from_file(args.ifile)
 
     # Create the output filename.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
@@ -187,7 +195,13 @@ def main():
     # filter the fieldsfile
     filtered_file = filter_fieldsfile(ff, args.prognostic, args.include_list, args.exclude_list)
 
-    outfile.to_file(output_filename)
-    
+    #Skip mule validation if the "--validate" option is provided
+    if not args.validate:
+        filtered_file.validate = void_validation
+
+    filtered_file.to_file(output_filename)
+
 if __name__== "__main__":
     main()
+
+
