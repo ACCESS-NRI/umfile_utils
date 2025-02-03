@@ -109,7 +109,7 @@ def field_not_present_warning(fields, stash_list):
     """
 
     existing_codes = {f.lbuser4 for f in fields}
-    missing_codes = stash_list - existing_codes
+    missing_codes = set(stash_list) - existing_codes
 
     if missing_codes:
         warnings.warn(f"The following STASH codes are not found in the input file: {missing_codes}")
