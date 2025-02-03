@@ -101,7 +101,7 @@ def field_not_present_warning(fields, stash_list):
     fields : mule.ff.FieldsFile.fields
         All the fields from the fields file.
 
-    stash_list :  list of int
+    stash_list :  set of int
     Returns
     _______
         None
