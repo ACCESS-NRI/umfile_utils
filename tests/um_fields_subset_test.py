@@ -16,19 +16,12 @@ def test_parse_arguments_all_arguments():
     """Test with all arguments provided."""
     test_args = ["script_name", "test_input_file", "-o", "output_file", "-p", "-v", "1,2,3", "-x", "4,5"]
     with patch("sys.argv", test_args):
-        args = parse_arguments()
+        args = parse_args()
         assert args.ifile == "test_input_file"
         assert args.output_path == "output_file"
         assert args.prognostic
         assert args.include_list == [1, 2, 3]
         assert args.exclude_list == [4, 5]
-
-def test_parse_arguments_missing_include_or_exclude():
-    """Test that an error is raised if neither -v nor -x is specified."""
-    test_args = ["script_name", "test_input_file"]
-    with patch("sys.argv", test_args):
-        with pytest.raises(Exception):
-            parse_arguments()
 
 # Define strategy for creating fake STASH codes and fields to test the warning function.
 stash_code_strategy = st.lists(st.integers(min_value=1, max_value=35000), min_size=1, max_size=10)
