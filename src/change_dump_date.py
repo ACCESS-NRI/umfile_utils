@@ -12,7 +12,7 @@ import mule
 
 def parse_args():
     """
-   Parse the command line arguments.
+    Parse the command line arguments.
 
     Parameters
     ----------
