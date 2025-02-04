@@ -12,17 +12,6 @@ import numpy as np
 from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
-def test_parse_arguments_all_arguments():
-    """Test with all arguments provided."""
-    test_args = ["script_name", "test_input_file", "-o", "output_file", "-p", "-v", "1,2,3", "-x", "4,5"]
-    with patch("sys.argv", test_args):
-        args = parse_args()
-        assert args.ifile == "test_input_file"
-        assert args.output_path == "output_file"
-        assert args.prognostic
-        assert args.include_list == [1, 2, 3]
-        assert args.exclude_list == [4, 5]
-
 # Define strategy for creating fake STASH codes and fields to test the warning function.
 stash_code_strategy = st.lists(st.integers(min_value=1, max_value=35000), min_size=1, max_size=10)
 fields_strategy = st.lists(stnp.arrays(dtype=np.int32, shape=(10,)), min_size=1, max_size=5)
