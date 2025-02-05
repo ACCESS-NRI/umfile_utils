@@ -12,6 +12,46 @@ import numpy as np
 from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
+def test_convert_to_list_valid():
+    """
+    Test convert_to_list with valid input.
+    """
+    assert convert_to_list("1,2,3") == [1, 2, 3]
+    assert convert_to_list("10,20,30") == [10, 20, 30]
+
+def test_parse_args_prognostic():
+    """
+    Test parse_args with --prognostic argument
+    """
+
+    test_args = ["test_file_name.py", "input.txt", "--prognostic"]
+    with patch("sys.argv", test_args):
+        args = parse_args()
+        assert args.ifile == "input.txt"
+        assert args.prognostic
+
+def test_parse_args_mutually_exclusive():
+    """
+    Test parse_args with mutually exclusive arguments.
+    """
+    test_args = ["test_file_name.py", "input.txt", "--prognostic", "--include", "1,2,3"]
+    with patch("sys.argv", test_args):
+        try:
+            parse_args()
+        except SystemExit:
+            pass
+        else:
+            assert False, "Expected SystemExit"
+
+def test_parse_args_include():
+    """
+    Test parse_args with one of the list arguments.
+    """
+    test_args = ["test_file_name.py", "input.txt", "--include", "1,2,3"]
+    with patch("sys.argv", test_args):
+        args = parse_args()
+        assert args.include_list == [1, 2, 3]
+
 # Define strategy for creating fake STASH codes and fields to test the warning function.
 stash_code_strategy = st.lists(st.integers(min_value=1, max_value=35000), min_size=1, max_size=10)
 fields_strategy = st.lists(stnp.arrays(dtype=np.int32, shape=(10,)), min_size=1, max_size=5)
