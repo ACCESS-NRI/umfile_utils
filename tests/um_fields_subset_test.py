@@ -17,18 +17,24 @@ from um_fields_subset_mule import (
 import numpy as np
 
 @pytest.mark.parametrize(
-    # description of the arguments
-    "input, expected_output",
+    "input, expected_output, should_raise",
     [
-        ("1,2,3", [1,2,3]), 
-        ("10,  20,30  ", [10,20,30])
+        ("1,2,3", [1, 2, 3], False),
+        ("10,  20,30  ", [10, 20, 30], False),
+        ("10.1,10,32", None, True),  # Contains a non-integer
+        ("10 20 30", None, True),    # Missing commas
+        ("-1,-2,-3", None, True),    # Contains negative numbers
+        ("0,1,2", None, True),        # Contains zero
+        ("a,1,2", None, True)        # Contains zero
     ]
 )
-def test_convert_to_list_valid(input, expected_output):
-    """
-    Test convert_to_list with valid input.
-    """
-    assert convert_to_list(input) == expected_output
+def test_convert_to_list(input, expected_output, should_raise):
+    """Test convert_to_list with valid and invalid inputs."""
+    if should_raise:
+        with pytest.raises(argparse.ArgumentTypeError, match="All values must be positive integers."):
+            convert_to_list(input)
+    else:
+        assert convert_to_list(input) == expected_output
 
 def test_parse_args_prognostic():
     """
@@ -69,47 +75,36 @@ def test_parse_args_include():
 stash_code_strategy = st.lists(st.integers(min_value=1, max_value=35000), min_size=1, max_size=10)
 fields_strategy = st.lists(stnp.arrays(dtype=np.int32, shape=(10,)), min_size=1, max_size=5)
 
-# Hypothesis-based test for field_not_present_warning.
-@given(stash_list=stash_code_strategy, fields=fields_strategy)
-@settings(suppress_health_check=[HealthCheck.filter_too_much])
+@pytest.fixture
+def create_mock_field():
+    """Factory function to create a mule field mock object."""
 
-def test_field_not_present_warning(stash_list, fields):
+    def _create_field(lbuser4 = None):
+        return MagicMock(
+            lbuser4=lbuser4,
+        )
+    return _create_field
+
+def test_field_not_present_warning_raised(create_mock_field):
     """
-    This function tests the warning function to issue a warning when a STASH code is not included in the file.
+    Test the field_not_present_warning function when a warning is to be raised.
     """
-    # Flatten each numpy array in the list of fields (not the list itself).
-    mock_fields = [MagicMock(lbuser4=item) for array in fields for item in array.flatten()]
+    mock_fields = [create_mock_field(lbuser4=1), create_mock_field(lbuser4=2), create_mock_field(lbuser4=3)]
+    stash_list = [1,1000,2]
+    with pytest.warns(UserWarning, match=r"The following STASH codes are not found in the input file: \{1000\}"):
+        field_not_present_warning(mock_fields, stash_list)
 
-    # Set up mocking of the warnings.warn function.
-    with patch("warnings.warn") as mock_warn:
-        # Convert stash_list to a set for unique values.
-        field_not_present_warning(mock_fields, set(stash_list))
-
-        # Calculate missing stash codes.
-        existing_codes = {item for array in fields for item in array.flatten()}
-        missing_codes = set(stash_list) - existing_codes
-
-        if missing_codes:
-            # Expected warning message.
-            expected_warning = f"The following STASH codes are not found in the input file: {sorted(missing_codes)}"
-
-            # Capture actual warning message.
-            actual_warning = str(mock_warn.call_args[0][0])
-
-            # Normalize by stripping brackets and whitespace before comparing.
-            expected_set = set(map(str, sorted(missing_codes)))
-            actual_set = set(actual_warning.split(": ")[1].strip(" {}").split(", "))
-
-            assert expected_set == actual_set, f"Expected: {expected_set}, Actual: {actual_set}"
+def test_field_not_present_warning_not_raised(create_mock_field):
+    """
+    Test the field_not_present_warning function when a warning is NOT to be raised.
+    """
+    mock_fields = [create_mock_field(lbuser4=1), create_mock_field(lbuser4=2), create_mock_field(lbuser4=3)]
+    specified_stash_codes = {1,3,2}
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        field_not_present_warning(mock_fields, specified_stash_codes)
 
 
-# Define a consistent range of field values (1 to 40000). 
-# Should have all the fields for this test not aiming to test the warning.
-consistent_field_values = list(range(1, 40001))
-
-# Define strategies for generating include/exclude lists.
-include_strategy = st.lists(st.integers(min_value=1, max_value=40000), min_size=1, max_size=10)
-exclude_strategy = st.lists(st.integers(min_value=1, max_value=40000), min_size=1, max_size=10)
 
 # Define a simple mock field class to replace MagicMock.
 class MockField:
@@ -162,7 +157,29 @@ def test_filter_fieldsfile_exclude(create_mock_field, create_mock_umfile):
         mock_exclude.assert_called_once_with(mock_file.fields, exclude_list)
         assert result.fields == "expected_fields"
 
-
+@pytest.mark.parametrize(
+    # description of the arguments
+    "existing_files, filename, expected_output",
+    [
+        # Case 1: Filename with suffix doesn't exist, return filename with suffix
+        ([], "testfilename", "testfilename_subset"),
+        # Case 2: Filename with suffix exists, returns filename with suffix appending 1
+        (["testfilename_subset"], "testfilename", "testfilename_subset1"),
+        # Case 3: Filename with suffix and a few numbered versions exist, returns
+        # filename with suffix and the first numbered version that doesn't exist
+        (
+            ["testfilename_subset", "testfilename_subset1", "testfilename_subset2"],
+            "testfilename",
+            "testfilename_subset3",
+        ),
+    ],
+    ids=[
+        "file_do_not_exist",
+        "file_exists",
+        "multiple_files_exist",
+    ],
+)
+@patch("os.path.exists")
 def test_create_default_outname_suffix_not_passed(mock_exists, existing_files, filename, expected_output):
     """
     Test the function that creates the default output file name, without passing a suffix.
