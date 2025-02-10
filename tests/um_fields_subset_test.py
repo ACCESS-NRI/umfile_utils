@@ -99,13 +99,6 @@ def test_field_not_present_warning_not_raised(create_mock_field):
         field_not_present_warning(mock_fields, specified_stash_codes)
 
 
-# Define a consistent range of field values (1 to 40000). 
-# Should have all the fields for this test not aiming to test the warning.
-consistent_field_values = list(range(1, 40001))
-
-# Define strategies for generating include/exclude lists.
-include_strategy = st.lists(st.integers(min_value=1, max_value=40000), min_size=1, max_size=10)
-exclude_strategy = st.lists(st.integers(min_value=1, max_value=40000), min_size=1, max_size=10)
 
 # Define a simple mock field class to replace MagicMock.
 class MockField:
