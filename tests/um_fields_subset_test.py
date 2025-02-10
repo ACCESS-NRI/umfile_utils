@@ -69,38 +69,34 @@ def test_parse_args_include():
 stash_code_strategy = st.lists(st.integers(min_value=1, max_value=35000), min_size=1, max_size=10)
 fields_strategy = st.lists(stnp.arrays(dtype=np.int32, shape=(10,)), min_size=1, max_size=5)
 
-# Hypothesis-based test for field_not_present_warning.
-@given(stash_list=stash_code_strategy, fields=fields_strategy)
-@settings(suppress_health_check=[HealthCheck.filter_too_much])
+@pytest.fixture
+def create_mock_field():
+    """Factory function to create a mule field mock object."""
 
-def test_field_not_present_warning(stash_list, fields):
+    def _create_field(lbuser4 = None):
+        return MagicMock(
+            lbuser4=lbuser4,
+        )
+    return _create_field
+
+def test_field_not_present_warning_raised(create_mock_field):
     """
-    This function tests the warning function to issue a warning when a STASH code is not included in the file.
+    Test the field_not_present_warning function when a warning is to be raised.
     """
-    # Flatten each numpy array in the list of fields (not the list itself).
-    mock_fields = [MagicMock(lbuser4=item) for array in fields for item in array.flatten()]
+    mock_fields = [create_mock_field(lbuser4=1), create_mock_field(lbuser4=2), create_mock_field(lbuser4=3)]
+    stash_list = [1,1000,2]
+    with pytest.warns(UserWarning, match=r"The following STASH codes are not found in the input file: \{1000\}"):
+        field_not_present_warning(mock_fields, stash_list)
 
-    # Set up mocking of the warnings.warn function.
-    with patch("warnings.warn") as mock_warn:
-        # Convert stash_list to a set for unique values.
-        field_not_present_warning(mock_fields, set(stash_list))
-
-        # Calculate missing stash codes.
-        existing_codes = {item for array in fields for item in array.flatten()}
-        missing_codes = set(stash_list) - existing_codes
-
-        if missing_codes:
-            # Expected warning message.
-            expected_warning = f"The following STASH codes are not found in the input file: {sorted(missing_codes)}"
-
-            # Capture actual warning message.
-            actual_warning = str(mock_warn.call_args[0][0])
-
-            # Normalize by stripping brackets and whitespace before comparing.
-            expected_set = set(map(str, sorted(missing_codes)))
-            actual_set = set(actual_warning.split(": ")[1].strip(" {}").split(", "))
-
-            assert expected_set == actual_set, f"Expected: {expected_set}, Actual: {actual_set}"
+def test_field_not_present_warning_not_raised(create_mock_field):
+    """
+    Test the field_not_present_warning function when a warning is NOT to be raised.
+    """
+    mock_fields = [create_mock_field(lbuser4=1), create_mock_field(lbuser4=2), create_mock_field(lbuser4=3)]
+    specified_stash_codes = {1,3,2}
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        field_not_present_warning(mock_fields, specified_stash_codes)
 
 
 # Define a consistent range of field values (1 to 40000). 
