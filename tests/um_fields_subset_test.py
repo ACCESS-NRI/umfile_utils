@@ -151,7 +151,29 @@ def test_filter_fieldsfile_exclude(create_mock_field, create_mock_umfile):
         mock_exclude.assert_called_once_with(mock_file.fields, exclude_list)
         assert result.fields == "expected_fields"
 
-
+@pytest.mark.parametrize(
+    # description of the arguments
+    "existing_files, filename, expected_output",
+    [
+        # Case 1: Filename with suffix doesn't exist, return filename with suffix
+        ([], "testfilename", "testfilename_subset"),
+        # Case 2: Filename with suffix exists, returns filename with suffix appending 1
+        (["testfilename_subset"], "testfilename", "testfilename_subset1"),
+        # Case 3: Filename with suffix and a few numbered versions exist, returns
+        # filename with suffix and the first numbered version that doesn't exist
+        (
+            ["testfilename_subset", "testfilename_subset1", "testfilename_subset2"],
+            "testfilename",
+            "testfilename_subset3",
+        ),
+    ],
+    ids=[
+        "file_do_not_exist",
+        "file_exists",
+        "multiple_files_exist",
+    ],
+)
+@patch("os.path.exists")
 def test_create_default_outname_suffix_not_passed(mock_exists, existing_files, filename, expected_output):
     """
     Test the function that creates the default output file name, without passing a suffix.
