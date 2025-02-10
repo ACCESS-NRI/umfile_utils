@@ -32,14 +32,13 @@ def test_convert_to_list_valid(input, expected_output):
 
 def test_parse_args_prognostic():
     """
-    Test parse_args with --prognostic argument
+    Test parse_args with the '--prognostic' argument passed
     """
-
-    test_args = ["test_file_name.py", "input.txt", "--prognostic"]
-    with patch("sys.argv", test_args):
+    test_args = ["--prognostic"]
+    with patch("sys.argv", ["script_name", "input_file"] + test_args):
         args = parse_args()
-        assert args.ifile == "input.txt"
-        assert args.prognostic
+        assert args.ifile == "input_file"
+        assert args.prognostic is True
 
 @pytest.mark.parametrize(
     # description of the arguments
@@ -121,64 +120,47 @@ class MockField:
         return MockField(self.lbuser4)
 
 
-#Test for include filter
-@given(fields=st.lists(st.sampled_from(consistent_field_values), min_size=1, max_size=5), include_list=include_strategy)
-def test_filter_fieldsfile_include(fields, include_list):
+def test_filter_fieldsfile_include(create_mock_field, create_mock_umfile):
     """
-    This function testing the fitlering when it is an include lsit and prognostic is False
+    Test filter_fieldsfile when the '--include' options is provided.
     """
     # Create a mock file with mock fields.
-    mock_file = MagicMock()
-    mock_file.fields = [MockField(f) for f in fields]  # Fields now have proper lbuser4 values.
-
-    # Call filter_fieldsfile with the include list
-    filtered_file = filter_fieldsfile(mock_file, False, include_list=include_list, exclude_list=None)
-
-    # Check that all included codes appear in the filtered file
-    assert all(f.lbuser4 in include_list for f in filtered_file.fields)
-
-    # Ensure that fields not in include_list are excluded
-    for f in filtered_file.fields:
-        assert f.lbuser4 in include_list
+    mock_file = create_mock_umfile()
+    include_list = [1,2]
+    with patch("um_fields_subset.include_fields") as mock_include:
+        warnings.filterwarnings("ignore", message="The following STASH codes are not found in the input file: .*") # Avoid raising warnings if STASH codes are not found in the input file
+        mock_include.return_value = "expected_fields"
+        result = filter_fieldsfile(mock_file, prognostic=False, include_list=include_list, exclude_list=None)
+        mock_include.assert_called_once_with(mock_file.fields, include_list)
+        assert result.fields == "expected_fields"
         
 
-@given(fields=st.lists(st.sampled_from(consistent_field_values), min_size=1, max_size=5))
-def test_filter_fieldsfile_prog(fields):
+def test_filter_fieldsfile_prognostic(create_mock_field, create_mock_umfile):
     """
-    This function tests when the prognostic = True
-    """
-    # Create a mock file with mock fields.
-    mock_file = MagicMock()
-    mock_file.fields = [MockField(f) for f in fields]  # Fields now have proper lbuser4 values.
-
-    # Call filter_fieldsfile with the include list.
-    filtered_file = filter_fieldsfile(mock_file, True, include_list=None, exclude_list=None)
-
-    # Check that all pronostic codes appear in the filtered file.
-    assert all(f.lbuser4 in PROGNOSTIC_STASH_CODES for f in filtered_file.fields)
-
-    # Ensure that fields are only prognostic.
-    for f in filtered_file.fields:
-        assert f.lbuser4 in PROGNOSTIC_STASH_CODES
-
-@given(fields=st.lists(st.sampled_from(consistent_field_values), min_size=1, max_size=5), exclude_list=include_strategy)
-def test_filter_fieldsfile_exclude(fields, exclude_list):
-    """
-    This function tests when filter fields function is using the exclude list. 
+    Test filter_fieldsfile when the '--prognostic' options is provided.
     """
     # Create a mock file with mock fields.
-    mock_file = MagicMock()
-    mock_file.fields = [MockField(f) for f in fields]  # Fields now have proper lbuser4 values.
+    mock_file = create_mock_umfile()
+    with patch("um_fields_subset.include_fields") as mock_include, warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="The following STASH codes are not found in the input file: .*") # Avoid raising warnings if STASH codes are not found in the input file
+        mock_include.return_value = "expected_fields"
+        result = filter_fieldsfile(mock_file, prognostic=True, include_list=None, exclude_list=None)
+        mock_include.assert_called_once_with(mock_file.fields, PROGNOSTIC_STASH_CODES)
+        assert result.fields == "expected_fields"
 
-    # Call filter_fieldsfile with the include list.
-    filtered_file = filter_fieldsfile(mock_file, False, include_list=None, exclude_list=exclude_list)
-
-    # Ensure that excluded codes do not appear in the filtered file/
-    assert all(f.lbuser4 not in exclude_list for f in filtered_file.fields)
-
-    # Ensure that only fields not in the exclude list remain.
-    for f in filtered_file.fields:
-        assert f.lbuser4 not in exclude_list
+def test_filter_fieldsfile_exclude(create_mock_field, create_mock_umfile):
+    """
+    Test filter_fieldsfile when the '--exclude' options is provided.
+    """
+    # Create a mock file with mock fields.
+    mock_file = create_mock_umfile()
+    exclude_list = [1,2]
+    with patch("um_fields_subset.exclude_fields") as mock_exclude:
+        warnings.filterwarnings("ignore", message="The following STASH codes are not found in the input file: .*") # Avoid raising warnings if STASH codes are not found in the input file
+        mock_exclude.return_value = "expected_fields"
+        result = filter_fieldsfile(mock_file, prognostic=False, include_list=None, exclude_list=exclude_list)
+        mock_exclude.assert_called_once_with(mock_file.fields, exclude_list)
+        assert result.fields == "expected_fields"
 
 
 def test_create_default_outname_suffix_not_passed(mock_exists, existing_files, filename, expected_output):
