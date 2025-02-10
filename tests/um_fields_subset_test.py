@@ -1,23 +1,34 @@
 
-import warnings
 import pytest
 from copy import deepcopy
 from unittest.mock import patch, MagicMock
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, given, settings, strategies as st
 from hypothesis.extra import numpy as stnp
-from hypothesis import given, settings, strategies as st
-from um_fields_subset_mule import (parse_args, field_not_present_warning, include_fields, exclude_fields, filter_fieldsfile, create_default_outname, PROGNOSTIC_STASH_CODES, void_validation)
-from hypothesis import given, strategies as st
+from um_fields_subset_mule import (
+    parse_args, 
+    field_not_present_warning, 
+    include_fields, exclude_fields, 
+    filter_fieldsfile, 
+    create_default_outname, 
+    void_validation, 
+    convert_to_list, 
+    PROGNOSTIC_STASH_CODES,
+)
 import numpy as np
-from itertools import chain
-PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
-def test_convert_to_list_valid():
+@pytest.mark.parametrize(
+    # description of the arguments
+    "input, expected_output",
+    [
+        ("1,2,3", [1,2,3]), 
+        ("10,  20,30  ", [10,20,30])
+    ]
+)
+def test_convert_to_list_valid(input, expected_output):
     """
     Test convert_to_list with valid input.
     """
-    assert convert_to_list("1,2,3") == [1, 2, 3]
-    assert convert_to_list("10,20,30") == [10, 20, 30]
+    assert convert_to_list(input) == expected_output
 
 def test_parse_args_prognostic():
     """
@@ -30,25 +41,28 @@ def test_parse_args_prognostic():
         assert args.ifile == "input.txt"
         assert args.prognostic
 
-def test_parse_args_mutually_exclusive():
+@pytest.mark.parametrize(
+    # description of the arguments
+    "mutually_exclusive_args", 
+    [
+        ["--prognostic", "--include", "1,2,3"], 
+        ["--prognostic", "--exclude", "1,2,3"], 
+        ["--include", "1,2,3", "--exclude", "1,2,3"], 
+    ],
+)
+def test_parse_args_mutually_exclusive(mutually_exclusive_args):
     """
     Test parse_args with mutually exclusive arguments.
     """
-    test_args = ["test_file_name.py", "input.txt", "--prognostic", "--include", "1,2,3"]
-    with patch("sys.argv", test_args):
-        try:
-            parse_args()
-        except SystemExit:
-            pass
-        else:
-            assert False, "Expected SystemExit"
+    with patch("sys.argv", ["script_name", "input_file"] + mutually_exclusive_args), pytest.raises(SystemExit):
+        parse_args()
 
 def test_parse_args_include():
     """
-    Test parse_args with one of the list arguments.
+    Test parse_args with the '--include' argument passed.
     """
-    test_args = ["test_file_name.py", "input.txt", "--include", "1,2,3"]
-    with patch("sys.argv", test_args):
+    test_args = ["--include", "1,2,3"]
+    with patch("sys.argv", ["script_name", "input_file"] + test_args):
         args = parse_args()
         assert args.include_list == [1, 2, 3]
 
@@ -211,7 +225,3 @@ def test_void_validation(capfd):
     # Test no side effects for input arguments
     assert args == init_args
     assert kwargs == init_kwargs
-
-                                                                                                  212,0-1       Bot
-
-
