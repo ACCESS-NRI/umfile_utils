@@ -17,18 +17,24 @@ from um_fields_subset_mule import (
 import numpy as np
 
 @pytest.mark.parametrize(
-    # description of the arguments
-    "input, expected_output",
+    "input, expected_output, should_raise",
     [
-        ("1,2,3", [1,2,3]), 
-        ("10,  20,30  ", [10,20,30])
+        ("1,2,3", [1, 2, 3], False),
+        ("10,  20,30  ", [10, 20, 30], False),
+        ("10.1,10,32", None, True),  # Contains a non-integer
+        ("10 20 30", None, True),    # Missing commas
+        ("-1,-2,-3", None, True),    # Contains negative numbers
+        ("0,1,2", None, True),        # Contains zero
+        ("a,1,2", None, True)        # Contains zero
     ]
 )
-def test_convert_to_list_valid(input, expected_output):
-    """
-    Test convert_to_list with valid input.
-    """
-    assert convert_to_list(input) == expected_output
+def test_convert_to_list(input, expected_output, should_raise):
+    """Test convert_to_list with valid and invalid inputs."""
+    if should_raise:
+        with pytest.raises(argparse.ArgumentTypeError, match="All values must be positive integers."):
+            convert_to_list(input)
+    else:
+        assert convert_to_list(input) == expected_output
 
 def test_parse_args_prognostic():
     """
