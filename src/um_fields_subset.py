@@ -161,7 +161,8 @@ def exclude_fields(fields, stash_list):
     
     Returns
     -------
-        A list of copies of the fields stash_list to include.
+        list of mule.ff.FieldsFile.fields
+        The subset of fields not containing the ones to be excluded.
     """
 
     field_not_present_warning(fields, stash_list)
