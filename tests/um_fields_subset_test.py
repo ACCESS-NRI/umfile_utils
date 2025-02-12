@@ -25,7 +25,7 @@ import numpy as np
         ("10 20 30", None, True),    # Missing commas
         ("-1,-2,-3", None, True),    # Contains negative numbers
         ("0,1,2", None, True),        # Contains zero
-        ("a,1,2", None, True)        # Contains zero
+        ("a,1,2", None, True)        # Contains a non-number
     ]
 )
 def test_convert_to_list(input, expected_output, should_raise):
@@ -101,7 +101,7 @@ def test_field_not_present_warning_not_raised(create_mock_field):
     mock_fields = [create_mock_field(lbuser4=1), create_mock_field(lbuser4=2), create_mock_field(lbuser4=3)]
     specified_stash_codes = {1,3,2}
     with warnings.catch_warnings():
-        warnings.filterwarnings("error")
+        warnings.filterwarnings("error", message="The following STASH codes are not found in the input file: .*")
         field_not_present_warning(mock_fields, specified_stash_codes)
 
 
