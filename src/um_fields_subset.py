@@ -21,19 +21,22 @@ def convert_to_list(value: str):
     
     Parameters
     __________
-    A string of user input for the --exlude or --include values
+    value: str
+    A string of comma-separated positive integers
 
     Returns
-        values : A list of the int STASH codes that are either to be excluded or included
+        list
+        A list of STASH codes to be excluded or included
     
     """
+    msg = "All values must be positive integers."
     try:
         values = [int(v) for v in value.split(",")]
         if any(v <= 0 for v in values):
-            raise ValueError
+            raise ValueError(msg)
         return values
     except ValueError:
-        raise argparse.ArgumentTypeError("All values must be positive integers.")
+        raise argparse.ArgumentTypeError(msg)
         
 def parse_args():
     """
