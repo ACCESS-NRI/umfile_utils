@@ -16,12 +16,25 @@ from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
 
 def convert_to_list(value: str):
-    """Convert a comma-separated string into a list of integers."""
-    try:
-        return [int(v) for v in value.split(",")]
-    except ValueError:
-        raise argparse.ArgumentTypeError("All values must be integers.")
+    """
+    Convert a comma-separated string into a list of positive integers.
+    
+    Parameters
+    __________
+    A string of user input for the --exlude or --include values
 
+    Returns
+        values : A list of the int STASH codes that are either to be excluded or included
+    
+    """
+    try:
+        values = [int(v) for v in value.split(",")]
+        if any(v <= 0 for v in values):
+            raise ValueError
+        return values
+    except ValueError:
+        raise argparse.ArgumentTypeError("All values must be positive integers.")
+        
 def parse_args():
     """
     Parse command-line arguments.
