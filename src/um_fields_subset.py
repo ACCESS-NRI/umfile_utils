@@ -106,7 +106,7 @@ def create_default_outname(filename, suffix="_subset"):
     
 def stash_not_present_warning(fields, stash_list):
     """
-    Checks that the fields in the either list provided are present in the file and provides a warning if not.
+    Raise a warning for any stash codes included in the input stash_list that are not present within the input fields.
     
     Parameters
     __________
