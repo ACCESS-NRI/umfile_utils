@@ -104,7 +104,7 @@ def create_default_outname(filename, suffix="_subset"):
             num += 1
     return f"{output_filename}{num}"
     
-def field_not_present_warning(fields, stash_list):
+def stash_not_present_warning(fields, stash_list):
     """
     Checks that the fields in the either list provided are present in the file and provides a warning if not.
     
