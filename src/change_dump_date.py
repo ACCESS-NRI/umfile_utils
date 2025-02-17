@@ -35,7 +35,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
-    parser.add_argument('-y', '--year', type=positive_int, help='New year value.', required=True)
+    parser.add_argument('-y', '--year', help='New year value.', required=True)
     parser.add_argument('-m', '--month', type=month_value, help='New month value (1-12).', required=True)
     parser.add_argument('-d', '--day', type=day_value, help='New day value (1-31).', required=True)
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
