@@ -148,7 +148,7 @@ def include_fields(fields, stash_list):
         The subset of fields only containing the ones to be included.
     """
 
-    field_not_present_warning(fields, stash_list)
+    stash_not_present_warning(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 in stash_list]
 
 def exclude_fields(fields, stash_list):
@@ -168,7 +168,7 @@ def exclude_fields(fields, stash_list):
         The subset of fields not containing the ones to be excluded.
     """
 
-    field_not_present_warning(fields, stash_list)
+    stash_not_present_warning(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 not in stash_list]
 
 def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
@@ -220,5 +220,3 @@ def main():
 
 if __name__== "__main__":
     main()
-
-
