@@ -2,23 +2,37 @@ import os
 import mule
 import argparse
 
+def year_value(value):
+    """
+    Ensure the year is a positive integer.
+    """
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"Invalid year: {value}. Must be a positive integer.")
+    return ivalue
+
 def month_value(value):
     """
-    Ensure the month is between 1 and 12.
+    Ensure the month is between 1 and 12 (inclusive).
     """
-    ivalue = positive_int(value)
-    if not (1 <= ivalue <= 12):
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be a positive integer.")
+    if ivalue > 12:
         raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be between 1 and 12.")
     return ivalue
 
 def day_value(value):
-    """ 
-    Ensure the day is between 1 and 31.
     """
-    ivalue = positive_int(value)
-    if not (1 <= ivalue <= 31):
+    Ensure the day is between 1 and 31 (inclusive).
+    """
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be a positive integer.")
+    if ivalue > 31:
         raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be between 1 and 31.")
     return ivalue
+
 
 def parse_args():
     """
@@ -35,14 +49,14 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
-    parser.add_argument('-y', '--year', help='New year value.', required=True)
+    parser.add_argument('-y', '--year', type=year_value, help='New year value.', required=True)
     parser.add_argument('-m', '--month', type=month_value, help='New month value (1-12).', required=True)
     parser.add_argument('-d', '--day', type=day_value, help='New day value (1-31).', required=True)
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
                         help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
-    
+
     return parser.parse_args()
 
 def change_fileheader_date(ff, new_year, new_month, new_day):
