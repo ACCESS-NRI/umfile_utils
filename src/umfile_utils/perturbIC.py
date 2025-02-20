@@ -204,9 +204,9 @@ def main():
     # Remove the time series from the data to ensure mule will work
     ff = remove_timeseries(ff_raw)
 
-    # Skip mule validation if the "--validate" option is provided
+    # Skip mule validation if the "--validate" option is not provided
     if not args.validate:
-        ff.validate = void_validation()
+        ff.validate = void_validation
         
     # loop through the fields
     for ifield, field in enumerate(ff.fields):

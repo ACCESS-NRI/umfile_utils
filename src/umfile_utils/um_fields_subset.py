@@ -107,7 +107,7 @@ def create_default_outname(filename, suffix="_subset"):
             num += 1
     return f"{output_filename}{num}"
     
-def stash_not_present_warning(fields, stash_list):
+def warn_if_stash_not_present(fields, stash_list):
     """
     Raise a warning for any stash codes included in the input stash_list that are not present within the input fields.
     
@@ -148,7 +148,7 @@ def include_fields(fields, stash_list):
         The subset of fields only containing the ones to be included.
     """
 
-    stash_not_present_warning(fields, stash_list)
+    warn_if_stash_not_present(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 in stash_list]
 
 def exclude_fields(fields, stash_list):
@@ -168,7 +168,7 @@ def exclude_fields(fields, stash_list):
         The subset of fields not containing the ones to be excluded.
     """
 
-    stash_not_present_warning(fields, stash_list)
+    warn_if_stash_not_present(fields, stash_list)
     return [f.copy() for f in fields if f.lbuser4 not in stash_list]
 
 def filter_fieldsfile(input_file, prognostic, include_list, exclude_list):
@@ -204,19 +204,19 @@ def main():
     # Parse the inputs and validate that they do not xlist or vlist are given.
     args = parse_args()
 
-    ff = mule.DumpFile.from_file(args.ifile)
-
     # Create the output filename.
     output_filename = create_default_outname(args.ifile) if args.output_path is None else args.output_path
+    
+    ff = mule.DumpFile.from_file(args.ifile)
 
     # filter the fieldsfile
     filtered_file = filter_fieldsfile(ff, args.prognostic, args.include_list, args.exclude_list)
 
-    #Skip mule validation if the "--validate" option is provided
+    # Skip mule validation if the "--validate" option is not provided
     if not args.validate:
         filtered_file.validate = void_validation
 
     filtered_file.to_file(output_filename)
 
 if __name__== "__main__":
-    main()
+    main() # pragma: no cover
