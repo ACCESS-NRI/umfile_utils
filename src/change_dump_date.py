@@ -64,20 +64,29 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
-    parser.add_argument('-y', '--year',dest='year', type=year_value, help='New year value (0-9999).', default=None)
-    parser.add_argument('-m', '--month', dest='month', type=month_value, help='New month value (1-12).', default=None)
-    parser.add_argument('-d', '--day',dest='day', type=day_value, help='New day value (1-31).', default=None)
-    parser.add_argument('--date',dest='date', type=date_value, help='New date in YYYYMMDD format.')
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
                         help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--date', type=date_value, help='New date in YYYYMMDD format.')
+    
+    sub_group = group.add_argument_group()
+    sub_group.add_argument('-y', '--year', type=year_value, help='New year value (0-9999).')
+    sub_group.add_argument('-m', '--month', type=month_value, help='New month value (1-12).')
+    sub_group.add_argument('-d', '--day', type=day_value, help='New day value (1-31).')
 
-    args_parsed =  parser.parse_args()
+    args_parsed = parser.parse_args()
+    
     if args_parsed.date:
         args_parsed.year, args_parsed.month, args_parsed.day = args_parsed.date
 
+    if args.year is None and args.month is None and args.day is None:
+        parser.error("At least one of --date, --year, --month, or --day must be specified.")
+        
     return args_parsed
+
 
 def change_header_date_file(ff, new_year, new_month, new_day):
     """
