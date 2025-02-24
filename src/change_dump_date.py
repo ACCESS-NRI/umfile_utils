@@ -3,12 +3,15 @@ import mule
 import argparse
 
 def year_value(value):
-    """
-    Ensure the year is a positive integer.
-    """
-    ivalue = int(value)
-    if ivalue < 1:
-        raise argparse.ArgumentTypeError(f"Invalid year: {value}. Must be a positive integer.")
+    """Ensure the year is a non-negative integer between 0 and 9999."""
+    if value is None or value == "":
+        return None
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid year: {value}. Must be an integer between 0 and 9999.")
+    if ivalue < 0 or ivalue > 9999:
+        raise argparse.ArgumentTypeError(f"Invalid year: {value}. Must be between 0 and 9999.")
     return ivalue
 
 def month_value(value):
@@ -33,6 +36,18 @@ def day_value(value):
         raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be between 1 and 31.")
     return ivalue
 
+def date_value(value):
+    """Ensure the date is in YYYYMMDD format and extract year, month, and day."""
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be in YYYYMMDD format.")
+    if len(value) != 8:
+        raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be exactly 8 digits (YYYYMMDD).")
+    year = int(value[:4])
+    month = int(value[4:6])
+    day = int(value[6:])
+    return year_value(year), month_value(month), day_value(day)
 
 def parse_args():
     """
