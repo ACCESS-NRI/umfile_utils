@@ -111,7 +111,7 @@ def change_fieldheader_date(ff, new_year, new_month, new_day):
         field.lbmon = new_month
         field.lbdat = new_day
 
-def create_default_outname(filename, suffix="_date_changed"):
+def create_default_outname(filename, suffix="_newdate"):
     """
     Create a default output filename by appending a suffix to the input filename. 
     If an output filename already exists, a number will be appended to produce a unique output filename. 
@@ -148,10 +148,9 @@ def main():
     """
     args = parse_args()
 
-    ff = mule.FieldsFile.from_file(args.ifile)
+    ff = mule.UMFile.from_file(args.ifile)
 
     output_file = create_default_outname(args.ifile) if args.output_path is None else args.output_path
-    print(ff.fixed_length_header.t1_year)
     # Skip mule validation if the "--validate" option is provided
 
     if not args.validate:
@@ -160,7 +159,6 @@ def main():
     change_fileheader_date(ff, args.year, args.month, args.day)
     change_fieldheader_date(ff, args.year, args.month, args.day)
 
-    print(ff.fixed_length_header.t1_year)
     # Create the output filename
 
     ff.to_file(output_file)
