@@ -47,19 +47,25 @@ def parse_args():
     args_parsed : argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
+    parser = argparse.ArgumentParser(description="Modify UM file initial and valid dates.")
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
-    parser.add_argument('-y', '--year', type=year_value, help='New year value.', required=True)
-    parser.add_argument('-m', '--month', type=month_value, help='New month value (1-12).', required=True)
-    parser.add_argument('-d', '--day', type=day_value, help='New day value (1-31).', required=True)
-    parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
-                        help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
+    parser.add_argument('-y', '--year', type=year_value, help='New year value as an integer.')
+    parser.add_argument('-m', '--month', type=month_value, help='New month value (1-12).')
+    parser.add_argument('-d', '--day', type=day_value, help='New day value (1-31).')
+    parser.add_argument(
+        '-o',
+        '--output',
+        dest='output_path',
+        metavar="OUTPUT_PATH",
+        help='Path to the output file. If omitted, the default output file is created by appending' 
+        '"_newdate" to the input path.'
+    )
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
 
     return parser.parse_args()
 
-def change_fileheader_date(ff, new_year, new_month, new_day):
+def change_header_date_file(ff, new_year, new_month, new_day):
     """
     Update the initial and valid date in the fixed-length header of a UM fields file.
 
@@ -86,7 +92,7 @@ def change_fileheader_date(ff, new_year, new_month, new_day):
     ff.fixed_length_header.v1_month = new_month
     ff.fixed_length_header.v1_day = new_day
 
-def change_fieldheader_date(ff, new_year, new_month, new_day):
+def change_header_date_field(ff, new_year, new_month, new_day):
     """
     Update the header date of each field in the  UM fields file.
 
