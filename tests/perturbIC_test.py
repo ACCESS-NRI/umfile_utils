@@ -341,7 +341,7 @@ class TestAdditionOperator:
 @patch("umfile_utils.perturbIC.create_default_outname")
 @patch("umfile_utils.perturbIC.create_random_generator")
 @patch("umfile_utils.perturbIC.void_validation")
-@patch("mule.DumpFile")
+@patch("mule.DumpFile.from_file")
 @patch("umfile_utils.perturbIC.remove_timeseries")
 @patch("umfile_utils.perturbIC.is_field_to_perturb")
 @patch("umfile_utils.perturbIC.create_perturbation")
@@ -351,7 +351,7 @@ def test_main(
     mock_create_perturbation,
     mock_is_field_to_perturb,
     mock_remove_timeseries,
-    mock_dumpfile,
+    mock_mule_dumpfile_from_file,
     mock_void_validation,
     mock_create_random_generator,
     mock_create_default_outname,
@@ -367,7 +367,7 @@ def test_main(
         ifile="test_input_file",
         amplitude=0.01,
         seed=123,
-        validate=False,
+        validate=True,
         output_path=None,
     )
     mock_parse_args.return_value = mock_args
@@ -381,7 +381,7 @@ def test_main(
     ]
     test_data = np.array([[1, 2, 3], [4, 5, 6]])
     mock_ff.fields[0].get_data.return_value = test_data
-    mock_dumpfile.from_file.return_value = mock_ff
+    mock_mule_dumpfile_from_file.return_value = mock_ff
 
     # Mock the return value of remove_timeseries
     mock_remove_timeseries.return_value = mock_ff
@@ -389,16 +389,13 @@ def test_main(
     # Mock is_field_to_perturb
     mock_is_field_to_perturb.side_effect = lambda field, stash: field.lbcode == lbcode_to_perturb
 
-    mock_ff.to_file.side_effect = lambda _: mock_dumpfile.validate()
-
     main()
 
     # Assertions
     mock_parse_args.assert_called_once()
     mock_create_default_outname.assert_called_once_with(mock_args.ifile)
     mock_create_random_generator.assert_called_once_with(mock_args.seed)
-    mock_void_validation.assert_called_once()
-    mock_dumpfile.from_file.assert_called_once_with(mock_args.ifile)
+    mock_mule_dumpfile_from_file.assert_called_once_with(mock_args.ifile)
     mock_remove_timeseries.assert_called_once_with(mock_ff)
     mock_is_field_to_perturb.assert_called()
     mock_create_perturbation.assert_called_once_with(
@@ -408,19 +405,22 @@ def test_main(
     )
     mock_addition_operator.assert_called_once_with(mock_create_perturbation.return_value)
     mock_ff.to_file.assert_called_once_with(mock_create_default_outname.return_value)
+    mock_void_validation.assert_not_called()
 
-    #  Case with validation enabled and output path provided
-    # Reset mock calls and mock_dumpfile.validate
+    #  ============= #
+    # Case with validation disabled and output path provided
+    #  ============= #
+
+    # Reset mock calls
     mock_create_default_outname.reset_mock()
-    mock_void_validation.reset_mock()
-    mock_dumpfile.validate = MagicMock()
-
-    # Set the validate flag to True and provide an output path
-    mock_args.validate = True
+    
+    # Set the output path and validate to False
     mock_args.output_path = "test_output_file"
+    mock_args.validate = False
+    
     main()
 
     # Assertions
-    mock_void_validation.assert_not_called()
+    assert mock_ff.validate == mock_void_validation
     mock_create_default_outname.assert_not_called()
 
