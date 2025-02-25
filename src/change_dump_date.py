@@ -66,7 +66,7 @@ def parse_args():
 
     Returns
     ----------
-    args_parsed : argparse.Namespace
+    argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
