@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import os
 from copy import deepcopy
 import mule
-from change_dump_date_mule import (
+from change_dump_date import (
     year_value,
     month_value,
     day_value,
