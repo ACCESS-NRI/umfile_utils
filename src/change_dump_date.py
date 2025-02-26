@@ -50,7 +50,7 @@ def day_value(value):
 
 def date_value(value):
     """
-    Ensure the date is in YYYYMMDD format and extract year, month, and day.
+    Ensures the date is in YYYYMMDD format and extract year, month, and day.
     """
     try:
         ivalue = int(value)
@@ -58,8 +58,17 @@ def date_value(value):
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be in YYYYMMDD format.")
     if len(value) != 8:
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be exactly 8 digits (YYYYMMDD).")
-    return ivalue
+    year = int(value[:4])
+    month = int(value[4:6])
+    day = int(value[6:])
 
+    # Validate extracted month and day
+    if month < 1 or month > 12:
+        raise argparse.ArgumentTypeError(f"Invalid month: {month}. Must be between 1 and 12.")
+    if day < 1 or day > 31:  # More validation can be added for actual months
+        raise argparse.ArgumentTypeError(f"Invalid day: {day}. Must be between 1 and 31.")
+    return ivalue
+    
 def parse_args():
     """
     Parse the command line arguments.
