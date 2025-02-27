@@ -265,10 +265,10 @@ def main():
     Main function to load, modify, and save the UM dump file.
     """
     args = parse_args()
-    print(args.year)
+
     if args.date:
         parse_date(args)
-    print(args.year)
+
     ff = mule.UMFile.from_file(args.ifile)
 
     output_file = create_default_outname(args.ifile) if args.output_path is None else args.output_path
