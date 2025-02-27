@@ -2,11 +2,11 @@ import os
 import mule
 import argparse
 
-def year_value(value):
+def validate_year_value(value):
     """
     Ensure the year is a non-negative integer between 0 and 9999.
     """
-    if not value:
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -16,11 +16,11 @@ def year_value(value):
         raise argparse.ArgumentTypeError(f"Invalid year: {value}. Must be between 0 and 9999.")
     return ivalue
 
-def month_value(value):
+def validate_month_value(value):
     """
     Ensure the month is between 1 and 12 (inclusive).
     """
-    if not value:
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -32,11 +32,11 @@ def month_value(value):
         raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be between 1 and 12.")
     return ivalue
 
-def day_value(value):
+def validate_day_value(value):
     """
     Ensure the day is between 1 and 31 (inclusive).
     """
-    if not value:
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -48,7 +48,7 @@ def day_value(value):
         raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be between 1 and 31.")
     return ivalue
 
-def date_value(value):
+def validate_date_value(value):
     """
     Ensures the date is in YYYYMMDD format and extract year, month, and day.
     """
@@ -58,9 +58,9 @@ def date_value(value):
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be in YYYYMMDD format.")
     if len(value) != 8:
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be exactly 8 digits (YYYYMMDD).")
-    year = int(value[:4])
-    month = int(value[4:6])
-    day = int(value[6:])
+    year = validate_year_value(value[:4])
+    month = validate_month_value(value[4:6])
+    day = validate_day_value(value[6:])
 
     # Validate extracted month and day
     if month < 1 or month > 12:
@@ -78,17 +78,17 @@ def parse_args():
     argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Modify UM dump file timestamps.")
+    parser = argparse.ArgumentParser(description="Modify UM dump file initial and valid dates")
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
-                        help='Path to the output file. If omitted, the default output file is created by appending "_perturbed" to the input path.')
+                        help='Path to the output file. If omitted, the default output file is created by appending "_newdate" to the input path.')
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
 
-    parser.add_argument('--date', type=date_value, help='New date in YYYYMMDD format.')
-    parser.add_argument('-y', '--year', type=year_value, help='New year value (0-9999).')
-    parser.add_argument('-m', '--month', type=month_value, help='New month value (1-12).')
-    parser.add_argument('-d', '--day', type=day_value, help='New day value (1-31).')
+    parser.add_argument('--date', type=validate_date_value, help='New date in YYYYMMDD format.')
+    parser.add_argument('-y', '--year', type=validate_year_value, default=None, help='New year value (0-9999).')
+    parser.add_argument('-m', '--month', type=validate_month_value, default=None, help='New month value (1-12).')
+    parser.add_argument('-d', '--day', type=validate_day_value, default=None,  help='New day value (1-31).')
 
     args_parsed = parser.parse_args()
 
@@ -115,63 +115,7 @@ def parse_date(args):
     args.month = int(date[4:6])
     args.day = int(date[6:])
 
-def change_fileheader_date(ff, new_year, new_month, new_day):
-    """
-    Update the initial and valid date in the fixed-length header of a UM fields file.
-
-    Parameters
-    ----------
-    ff : mule.FieldsFile
-        The UM fields file object whose header will be updated.
-    new_year : int
-        The new year to set in the file header.
-    new_month : int
-        The new month to set in the file header.
-    new_day : int
-        The new day to set in the file header.
-
-    Returns
-    -------
-    None
-    """
-
-    if new_year != None:
-        ff.fixed_length_header.t1_year = new_year
-        ff.fixed_length_header.v1_year = new_year
-
-    ff.fixed_length_header.t1_month = new_month
-    ff.fixed_length_header.t1_day = new_day
-    ff.fixed_length_header.v1_month = new_month
-    ff.fixed_length_header.v1_day = new_day
-
-def change_fieldheader_date(ff, new_year, new_month, new_day):
-    """
-    Update the header date of each field in the  UM fields file.
-
-    Parameters
-    ----------
-    ff : mule.FieldsFile
-        The UM fields file object whose header will be updated.
-    new_year : int
-        The new year to set in the file header.
-    new_month : int
-        The new month to set in the file header.
-    new_day : int
-        The new day to set in the file header.
-
-    Returns
-    -------
-    None
-    """
-
-    for field in ff.fields:
-        if new_year != None:
-            field.lbyr = new_year
-
-        field.lbmon = new_month
-        field.lbdat = new_day
-
-def change_fileheader_date(ff, new_year, new_month, new_day):
+def change_header_date_file(ff, new_year, new_month, new_day):
     """
     Update the initial and valid date in the fixed-length header of a UM fields file.
 
@@ -201,7 +145,7 @@ def change_fileheader_date(ff, new_year, new_month, new_day):
         ff.fixed_length_header.t1_day = new_day
         ff.fixed_length_header.v1_day = new_day
 
-def change_fieldheader_date(ff, new_year, new_month, new_day):
+def change_header_date_field(ff, new_year, new_month, new_day):
     """
     Update the header date of each field in the  UM fields file.
 
@@ -277,15 +221,14 @@ def main():
     if not args.validate:
         ff.validate = void_validation
 
-    change_fileheader_date(ff, args.year, args.month, args.day)
-    change_fieldheader_date(ff, args.year, args.month, args.day)
+    change_header_date_file(ff, args.year, args.month, args.day)
+    change_header_date_field(ff, args.year, args.month, args.day)
 
     # Create the output filename
 
     ff.to_file(output_file)
-
+    
 
 if __name__== "__main__":
 
     main()
-
