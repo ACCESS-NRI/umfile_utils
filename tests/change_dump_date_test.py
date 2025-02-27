@@ -4,18 +4,19 @@ from unittest.mock import MagicMock, patch
 import os
 from copy import deepcopy
 import mule
-from change_dump_date import (
-    year_value,
-    month_value,
-    day_value,
-    date_value,
-    parse_date,
+from change_dump_date_mule import (
+    validate_year_value, 
+    validate_month_value, 
+    validate_day_value, 
+    validate_date_value,
+    parse_date, 
     parse_args,
-    change_fileheader_date,
-    change_fieldheader_date,
+    change_header_date_file, 
+    change_header_date_field, 
     create_default_outname,
     void_validation
 )
+
 # Combined Test for year_value, month_value, and day_value
 @pytest.mark.parametrize(
     "func, input, expected_output, should_raise",
@@ -27,7 +28,7 @@ from change_dump_date import (
         (year_value, "-1", None, True),  # Below range
         (year_value, "10000", None, True),  # Above range
         (year_value, "abcd", None, True),  # Non-numeric
-        (year_value, "", None, False),  # Empty string should return None
+        (year_value, "", None, True),  # Empty string should return None
 
         # Month tests
         (month_value, "1", 1, False),
@@ -36,7 +37,7 @@ from change_dump_date import (
         (month_value, "0", None, True),  # Below range
         (month_value, "13", None, True),  # Above range
         (month_value, "abc", None, True),  # Non-numeric
-        (month_value, "", None, False),  # Empty string should return None
+        (month_value, "", None, True),  # Empty string should return None
 
         # Day tests
         (day_value, "1", 1, False),
@@ -45,7 +46,7 @@ from change_dump_date import (
         (day_value, "0", None, True),  # Below range
         (day_value, "32", None, True),  # Above range
         (day_value, "xyz", None, True),  # Non-numeric
-        (day_value, "", None, False),  # Empty string should return None
+        (day_value, "", None, True),  # Empty string should return None
 
         #Date test
         (date_value, "20240226", 20240226, False),  # Valid date
@@ -128,14 +129,14 @@ class MockHeader:
         (None, None, None, 2000, 1, 1),  # Test case 5: No changes
     ]
 )
-def test_change_fileheader_date(new_year, new_month, new_day, expected_year, expected_month, expected_day):
+def test_change_header_date_file(new_year, new_month, new_day, expected_year, expected_month, expected_day):
     """
     This test check that the fileheader is being changed properly depending on which parameters it is given.
     """
 
     ff = MockFieldsFile()
 
-    change_fileheader_date(ff, new_year, new_month, new_day)
+    change_header_date_file(ff, new_year, new_month, new_day)
 
     assert ff.fixed_length_header.t1_year == expected_year
     assert ff.fixed_length_header.v1_year == expected_year
@@ -165,13 +166,13 @@ class MockFieldsTestFile:
         (None, None, None, 2000, 1, 1),  # Test case 5: No changes
     ]
 )
-def test_change_fieldheader_date(new_year, new_month, new_day, expected_year, expected_month, expected_day):
+def test_change_header_date_field(new_year, new_month, new_day, expected_year, expected_month, expected_day):
     """
     This test checks that the header date of each field is changed correctly based on the input parameters.
     """
     ff = MockFieldsTestFile(num_fields=3)  # Create a mock FieldsFile with 3 fields
 
-    change_fieldheader_date(ff, new_year, new_month, new_day)
+    change_header_date_field(ff, new_year, new_month, new_day)
 
     # Check that each field's header date has been updated correctly
     for field in ff.fields:
