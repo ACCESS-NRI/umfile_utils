@@ -6,7 +6,7 @@ def validate_year_value(value):
     """
     Ensure the year is a non-negative integer between 0 and 9999.
     """
-    if value is None:
+    if value is None or value is "":
         return None
     try:
         ivalue = int(value)
@@ -20,7 +20,7 @@ def validate_month_value(value):
     """
     Ensure the month is between 1 and 12 (inclusive).
     """
-    if value is None:
+    if value is None or value is "":
         return None
     try:
         ivalue = int(value)
@@ -34,7 +34,7 @@ def validate_day_value(value):
     """
     Ensure the day is between 1 and 31 (inclusive).
     """
-    if value is None:
+    if value is None or value is "":
         return None
     try:
         ivalue = int(value)
