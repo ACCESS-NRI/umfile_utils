@@ -4,12 +4,11 @@ from unittest.mock import MagicMock, patch
 import os
 from copy import deepcopy
 import mule
-from change_dump_date_mule import (
+from change_dump_date import (
     validate_year_value, 
     validate_month_value, 
     validate_day_value, 
-    validate_date_value,
-    parse_date, 
+    validate_date_value, 
     parse_args,
     change_header_date_file, 
     change_header_date_field, 
