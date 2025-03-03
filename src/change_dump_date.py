@@ -6,7 +6,7 @@ def validate_year_value(value):
     """
     Ensure the year is a non-negative integer between 0 and 9999.
     """
-    if value is None or value is "":
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -20,7 +20,7 @@ def validate_month_value(value):
     """
     Ensure the month is between 1 and 12 (inclusive).
     """
-    if value is None or value is "":
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -34,7 +34,7 @@ def validate_day_value(value):
     """
     Ensure the day is between 1 and 31 (inclusive).
     """
-    if value is None or value is "":
+    if value is None:
         return None
     try:
         ivalue = int(value)
@@ -65,12 +65,19 @@ def validate_date_value(value):
         raise argparse.ArgumentTypeError(f"Invalid day: {day}. Must be between 1 and 31.")
     return (year,month,day)
 
-def not_exclusive(args, parser):
+def validate_mutually_exclusive_args(year, month, day, date):
     """
-    Catches if the user inputs a -d -m -y and -date
+    Check that --date is not passed together with any of --year, --month or --day.
     """
-    if args.date and (args.year or args.month or args.day):
-        raise parser.error(f"The --date (YYYYMMDD) and -y -m -d commands are exclusive")
+    if date is not None and any(arg is not None for arg in [year, month, day]):
+        raise ValueError("The arguments --date and any of --year, --month or --day are mutually exclusive.")
+            
+def validate_required_args(year, month, day, date):
+    """
+    Ensure at least one argument among -y, -m, -d or --date is specified.
+    """
+    if all(arg is None for arg in [date, year, month, day]):
+        raise ValueError(""At least one argument among --date, --year, --month or --day must be provided.")
     
 def parse_args():
     """
@@ -89,14 +96,16 @@ def parse_args():
         help='Validate the output fields file using mule validation.')
 
     parser.add_argument('--date', help='New date in YYYYMMDD format.')
-    parser.add_argument('-y', '--year', type=validate_year_value, default=None, help='New year value (0-9999).')
+    parser.add_argument('-y', '--year', type=validate_year_value, help='New year value (0-9999).')
     parser.add_argument('-m', '--month', type=validate_month_value, default=None, help='New month value (1-12).')
-    parser.add_argument('-d', '--day', type=validate_day_value, default=None,  help='New day value (1-31).')
+    parser.add_argument('-d', '--day', type=validate_day_value,  help='New day value (1-31).')
 
     args_parsed = parser.parse_args()
 
     # Ensure at least one of -y, -m, or -d is specified if --date is not used
-    not_exclusive(args_parsed, parser)
+    year, month, day, date = args_parsed.year, args_parsed.month, args_parsed.day, args_parsed.date
+    validate_mutually_exclusive_args(year, month, day, date)
+    validate_required_args(year, month, day, date)
 
     # If --date is provided, extract year, month, and day and assign them
     if args_parsed.date:
