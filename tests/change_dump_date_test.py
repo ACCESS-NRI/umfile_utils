@@ -1,9 +1,7 @@
 import pytest
 import argparse
 from unittest.mock import MagicMock, patch
-import os
 from copy import deepcopy
-import mule
 from change_dump_date import (
     validate_year_value, 
     validate_month_value, 
@@ -67,7 +65,7 @@ def test_value_functions(func, input, expected_output, should_raise):
             func(input)
     else:
         assert func(input) == expected_output
-def test_parse_args(monkeypatch):
+def test_parse_args():
     """
     Test parse_args() function for different command-line arguments.
     """
