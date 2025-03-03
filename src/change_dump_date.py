@@ -26,9 +26,7 @@ def validate_month_value(value):
         ivalue = int(value)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be an integer between 1 and 12.")
-    if ivalue < 1:
-        raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be a positive integer.")
-    if ivalue > 12:
+    if ivalue < 1 or ivalue > 12:
         raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be between 1 and 12.")
     return ivalue
 
@@ -42,10 +40,8 @@ def validate_day_value(value):
         ivalue = int(value)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be an integer between 1 and 31.")
-    if ivalue < 1:
-        raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be a positive integer.")
-    if ivalue > 31:
-        raise argparse.ArgumentTypeError(f"Invalid day: {value}. Must be between 1 and 31.")
+    if ivalue < 1 or ivalue > 31:
+        raise argparse.ArgumentTypeError(f"Invalid month: {value}. Must be between 1 and 31.")
     return ivalue
 
 def validate_date_value(value):
@@ -67,7 +63,14 @@ def validate_date_value(value):
         raise argparse.ArgumentTypeError(f"Invalid month: {month}. Must be between 1 and 12.")
     if day < 1 or day > 31:  # More validation can be added for actual months
         raise argparse.ArgumentTypeError(f"Invalid day: {day}. Must be between 1 and 31.")
-    return ivalue
+    return (year,month,day)
+
+def not_exclusive(args, parser):
+    """
+    Catches if the user inputs a -d -m -y and -date
+    """
+    if args.date and (args.year or args.month or args.day):
+        raise parser.error(f"The --date (YYYYMMDD) and -y -m -d commands are exclusive")
     
 def parse_args():
     """
@@ -85,7 +88,7 @@ def parse_args():
     parser.add_argument('--validate', action='store_true',
         help='Validate the output fields file using mule validation.')
 
-    parser.add_argument('--date', type=validate_date_value, help='New date in YYYYMMDD format.')
+    parser.add_argument('--date', help='New date in YYYYMMDD format.')
     parser.add_argument('-y', '--year', type=validate_year_value, default=None, help='New year value (0-9999).')
     parser.add_argument('-m', '--month', type=validate_month_value, default=None, help='New month value (1-12).')
     parser.add_argument('-d', '--day', type=validate_day_value, default=None,  help='New day value (1-31).')
@@ -93,27 +96,13 @@ def parse_args():
     args_parsed = parser.parse_args()
 
     # Ensure at least one of -y, -m, or -d is specified if --date is not used
-    if args_parsed.date and (args_parsed.year or args_parsed.month or args_parsed.day):
-        parser.error("At least one of --date (YYYYMMDD) and -y -m -d commands are exclusive")
+    not_exclusive(args_parsed, parser)
+
+    # If --date is provided, extract year, month, and day and assign them
+    if args_parsed.date:
+        args_parsed.year, args_parsed.month, args_parsed.day = validate_date_value(args_parsed.date)
 
     return args_parsed
-
-def parse_date(args):
-    """
-    Parses the --date YYYYMMDD into -y -m -d format
-
-    Parameters
-    __________
-
-    args :  argparse.Namespace
-        Argparse namespace containing the parsed command line arguments
-    """
-    date = str(args.date)
-
-    #Parse the specific portions
-    args.year = int(date[:4])
-    args.month = int(date[4:6])
-    args.day = int(date[6:])
 
 def change_header_date_file(ff, new_year, new_month, new_day):
     """
@@ -209,10 +198,7 @@ def main():
     Main function to load, modify, and save the UM dump file.
     """
     args = parse_args()
-    print(args.year)
-    if args.date:
-        parse_date(args)
-    print(args.year)
+    
     ff = mule.UMFile.from_file(args.ifile)
 
     output_file = create_default_outname(args.ifile) if args.output_path is None else args.output_path
