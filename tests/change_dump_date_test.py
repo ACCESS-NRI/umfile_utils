@@ -1,6 +1,6 @@
 import pytest
 import argparse
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from copy import deepcopy
 from change_dump_date import (
     validate_year_value, 
@@ -90,8 +90,7 @@ def test_parse_args():
         (["input_file", "--date", "20250226", "-y", "2025"], argparse.ArgumentError),
     ]
 
-    for args, expected in test_cases:
-        monkeypatch.setattr("sys.argv", ["script_name"] + args)
+with patch("sys.argv", ["script_name", "input_file"] + test_args):
 
         if expected == argparse.ArgumentError:
             with pytest.raises(SystemExit):  # Argparse exits with error
