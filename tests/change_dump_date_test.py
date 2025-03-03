@@ -1,8 +1,10 @@
 import pytest
 import argparse
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+import os
 from copy import deepcopy
-from change_dump_date import (
+import mule
+from change_dump_date_mule import (    
     validate_year_value, 
     validate_month_value, 
     validate_day_value, 
@@ -14,63 +16,92 @@ from change_dump_date import (
     void_validation
 )
 
-# Combined Test for year_value, month_value, and day_value
 @pytest.mark.parametrize(
-    "func, input, expected_output, should_raise",
+    "input, expected_output, should_raise",
     [
-        # Year tests
-        (year_value, "0", 0, False),
-        (year_value, "2024", 2024, False),
-        (year_value, "9999", 9999, False),
-        (year_value, "-1", None, True),  # Below range
-        (year_value, "10000", None, True),  # Above range
-        (year_value, "abcd", None, True),  # Non-numeric
-        (year_value, "", None, True),  # Empty string should return None
-
-        # Month tests
-        (month_value, "1", 1, False),
-        (month_value, "12", 12, False),
-        (month_value, "6", 6, False),
-        (month_value, "0", None, True),  # Below range
-        (month_value, "13", None, True),  # Above range
-        (month_value, "abc", None, True),  # Non-numeric
-        (month_value, "", None, True),  # Empty string should return None
-
-        # Day tests
-        (day_value, "1", 1, False),
-        (day_value, "31", 31, False),
-        (day_value, "15", 15, False),
-        (day_value, "0", None, True),  # Below range
-        (day_value, "32", None, True),  # Above range
-        (day_value, "xyz", None, True),  # Non-numeric
-        (day_value, "", None, True),  # Empty string should return None
-
-        #Date test
-        (date_value, "20240226", 20240226, False),  # Valid date
-        (date_value, "19991231", 19991231, False),  # Valid date
-        (date_value, "00000000", 0, True),  # Edge case Invalid (month and day cannot be 0)
-        (date_value, "20241301", None, True),  # Invalid month (13)
-        (date_value, "202402", None, True),  # Too short
-        (date_value, "abcdefgh", None, True),  # Non-numeric
-        (date_value, "", None, True),  # Empty string is invalid
-    ],)
-
-def test_value_functions(func, input, expected_output, should_raise):
-    """
-    This function tests the 3 different type functions for the parser
-    """
-
+        ("0", 0, False),
+        ("2024", 2024, False),
+        ("9999", 9999, False),
+        ("-1", None, True),  # Below range
+        ("10000", None, True),  # Above range
+        ("abcd", None, True),  # Non-numeric
+        ("", None, False),  # Empty string should return None
+    ],
+)
+def test_validate_year_value(input, expected_output, should_raise):
+    """Tests validate_year_value function."""
     if should_raise:
         with pytest.raises(argparse.ArgumentTypeError):
-            func(input)
+            validate_year_value(input)
     else:
-        assert func(input) == expected_output
-def test_parse_args():
-    """
-    Test parse_args() function for different command-line arguments.
-    """
+        assert validate_year_value(input) == expected_output
 
-    test_cases = [
+
+@pytest.mark.parametrize(
+    "input, expected_output, should_raise",
+    [
+        ("1", 1, False),
+        ("12", 12, False),
+        ("6", 6, False),
+        ("0", None, True),  # Below range
+        ("13", None, True),  # Above range
+        ("abc", None, True),  # Non-numeric
+        ("", None, False),  # Empty string should return None
+    ],
+)
+def test_validate_month_value(input, expected_output, should_raise):
+    """Tests validate_month_value function."""
+    if should_raise:
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_month_value(input)
+    else:
+        assert validate_month_value(input) == expected_output
+
+
+@pytest.mark.parametrize(
+    "input, expected_output, should_raise",
+    [
+        ("1", 1, False),
+        ("31", 31, False),
+        ("15", 15, False),
+        ("0", None, True),  # Below range
+        ("32", None, True),  # Above range
+        ("xyz", None, True),  # Non-numeric
+        ("", None, False),  # Empty string should return None
+    ],
+)
+def test_validate_day_value(input, expected_output, should_raise):
+    """Tests validate_day_value function."""
+    if should_raise:
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_day_value(input)
+    else:
+        assert validate_day_value(input) == expected_output
+
+
+@pytest.mark.parametrize(
+    "input, expected_output, should_raise",
+    [
+        ("20240226", (2024, 2, 26), False),  # Valid date (adjusted output to tuple)
+        ("19991231", (1999, 12, 31), False),  # Valid date
+        ("00000000", None, True),  # Edge case Invalid (month and day cannot be 0)
+        ("20241301", None, True),  # Invalid month (13)
+        ("202402", None, True),  # Too short
+        ("abcdefgh", None, True),  # Non-numeric
+        ("", None, True),  # Empty string is invalid
+    ],
+)
+def test_validate_date_value(input, expected_output, should_raise):
+    """Tests validate_date_value function."""
+    if should_raise:
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_date_value(input)
+    else:
+        assert validate_date_value(input) == expected_output
+
+@pytest.mark.parametrize(
+    "args, expected",
+    [
         # Test case 1: Required input file argument
         (["input_file"], {"ifile": "input_file", "output_path": None, "validate": False, "date": None, "year": None, "month": None, "day": None}),
 
@@ -81,25 +112,28 @@ def test_parse_args():
         (["input_file", "--validate"], {"ifile": "input_file", "output_path": None, "validate": True, "date": None, "year": None, "month": None, "day": None}),
 
         # Test case 4: Setting a full date
-        (["input_file", "--date", "20250226"], {"ifile": "input_file", "output_path": None, "validate": False, "date": 20250226, "year": None, "month": None, "day": None}),
+        (["input_file", "--date", "20250226"], {"ifile": "input_file", "output_path": None, "validate": False, "date": "20250226", "year": 2025, "month": 2, "day": 26}),
 
         # Test case 5: Setting individual year, month, and day
         (["input_file", "-y", "2025", "-m", "2", "-d", "26"], {"ifile": "input_file", "output_path": None, "validate": False, "date": None, "year": 2025, "month": 2, "day": 26}),
 
         # Test case 6: Exclusive date and year should cause an error
         (["input_file", "--date", "20250226", "-y", "2025"], argparse.ArgumentError),
-    ]
+    ],
+)
+def test_parse_args(monkeypatch, args, expected):
+    """
+    Test parse_args() function for different command-line arguments.
+    """
+    monkeypatch.setattr("sys.argv", ["script_name"] + args)
 
-with patch("sys.argv", ["script_name", "input_file"] + test_args):
-
-        if expected == argparse.ArgumentError:
-            with pytest.raises(SystemExit):  # Argparse exits with error
-                parse_args()
-        else:
-            parsed_args = parse_args()
-            for key, value in expected.items():
-                assert getattr(parsed_args, key) == value
-
+    if expected == argparse.ArgumentError:
+        with pytest.raises(SystemExit):  # argparse exits with an error
+            parse_args()
+    else:
+        parsed_args = parse_args()
+        for key, value in expected.items():
+            assert getattr(parsed_args, key) == value
 
 # Test the file header date change
 class MockFieldsFile:
