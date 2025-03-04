@@ -77,7 +77,7 @@ def validate_required_args(year, month, day, date):
     Ensure at least one argument among -y, -m, -d or --date is specified.
     """
     if all(arg is None for arg in [date, year, month, day]):
-        raise ValueError(""At least one argument among --date, --year, --month or --day must be provided.")
+        raise ValueError("At least one argument among --date, --year, --month or --day must be provided.")
     
 def parse_args():
     """
