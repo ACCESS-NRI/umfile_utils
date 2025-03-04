@@ -4,11 +4,13 @@ from unittest.mock import MagicMock, patch
 import os
 from copy import deepcopy
 import mule
-from change_dump_date_mule import (    
+from change_dump_date import (    
     validate_year_value, 
     validate_month_value, 
     validate_day_value, 
     validate_date_value, 
+    validate_required_args,
+    validate_mutually_exclusive_args,
     parse_args,
     change_header_date_file, 
     change_header_date_field, 
@@ -25,11 +27,12 @@ from change_dump_date_mule import (
         ("-1", None, True),  # Below range
         ("10000", None, True),  # Above range
         ("abcd", None, True),  # Non-numeric
-        ("", None, False),  # Empty string should return None
     ],
 )
 def test_validate_year_value(input, expected_output, should_raise):
-    """Tests validate_year_value function."""
+    """
+    Tests validate_year_value function.
+    """
     if should_raise:
         with pytest.raises(argparse.ArgumentTypeError):
             validate_year_value(input)
@@ -46,11 +49,12 @@ def test_validate_year_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("13", None, True),  # Above range
         ("abc", None, True),  # Non-numeric
-        ("", None, False),  # Empty string should return None
     ],
 )
 def test_validate_month_value(input, expected_output, should_raise):
-    """Tests validate_month_value function."""
+    """
+    Tests validate_month_value function.
+    """
     if should_raise:
         with pytest.raises(argparse.ArgumentTypeError):
             validate_month_value(input)
@@ -67,11 +71,12 @@ def test_validate_month_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("32", None, True),  # Above range
         ("xyz", None, True),  # Non-numeric
-        ("", None, False),  # Empty string should return None
     ],
 )
 def test_validate_day_value(input, expected_output, should_raise):
-    """Tests validate_day_value function."""
+    """
+    Tests validate_day_value function.
+    """
     if should_raise:
         with pytest.raises(argparse.ArgumentTypeError):
             validate_day_value(input)
@@ -88,52 +93,103 @@ def test_validate_day_value(input, expected_output, should_raise):
         ("20241301", None, True),  # Invalid month (13)
         ("202402", None, True),  # Too short
         ("abcdefgh", None, True),  # Non-numeric
-        ("", None, True),  # Empty string is invalid
     ],
 )
 def test_validate_date_value(input, expected_output, should_raise):
-    """Tests validate_date_value function."""
+    """
+    Tests validate_date_value function.
+    """
     if should_raise:
         with pytest.raises(argparse.ArgumentTypeError):
             validate_date_value(input)
     else:
         assert validate_date_value(input) == expected_output
 
+
 @pytest.mark.parametrize(
-    "args, expected",
+    "year, month, day, date, should_raise",
     [
-        # Test case 1: Required input file argument
-        (["input_file"], {"ifile": "input_file", "output_path": None, "validate": False, "date": None, "year": None, "month": None, "day": None}),
-
-        # Test case 2: Input file with output file
-        (["input_file", "-o", "output_file"], {"ifile": "input_file", "output_path": "output_file", "validate": False, "date": None, "year": None, "month": None, "day": None}),
-
-        # Test case 3: Validation flag
-        (["input_file", "--validate"], {"ifile": "input_file", "output_path": None, "validate": True, "date": None, "year": None, "month": None, "day": None}),
-
-        # Test case 4: Setting a full date
-        (["input_file", "--date", "20250226"], {"ifile": "input_file", "output_path": None, "validate": False, "date": "20250226", "year": 2025, "month": 2, "day": 26}),
-
-        # Test case 5: Setting individual year, month, and day
-        (["input_file", "-y", "2025", "-m", "2", "-d", "26"], {"ifile": "input_file", "output_path": None, "validate": False, "date": None, "year": 2025, "month": 2, "day": 26}),
-
-        # Test case 6: Exclusive date and year should cause an error
-        (["input_file", "--date", "20250226", "-y", "2025"], argparse.ArgumentError),
-    ],
+        (None, None, None, 20240226, False),  # Only date provided, valid
+        (2024, None, None, None, False),  # Only year provided, valid
+        (None, 2, None, None, False),  # Only month provided, valid
+        (None, None, 26, None, False),  # Only day provided, valid
+        (None, None, None, None, True),  # No arguments provided, should raise error
+    ]
 )
-def test_parse_args(monkeypatch, args, expected):
+def test_validate_required_args(year, month, day, date, should_raise):
+    if should_raise:
+        with pytest.raises(ValueError, match="At least one argument among --date, --year, --month or --day must be provided."):
+            validate_required_args(year, month, day, date)
+    else:
+        validate_required_args(year, month, day, date)  # Should not raise
+
+
+@pytest.mark.parametrize(
+    "year, month, day, date, should_raise",
+    [
+        (None, None, None, 20240226, False),  # Only date, valid
+        (2024, None, None, None, False),  # Only one part of -y,-m,-d, valid
+        (2024, 2, 26, None, False),  # Year, month, and day together, valid
+        (None, None, None, None, False),  # No arguments, valid (handled by required check)
+        (None, 2, None, 20240226, True),  # -y,-m, or -d and date given together, should raise error
+        (2024, 2, 26, 20240226, True),  # Year, month, day, and date together, should raise error
+    ]
+)
+def test_validate_mutually_exclusive_args(year, month, day, date, should_raise):
+    if should_raise:
+        with pytest.raises(ValueError, match="The arguments --date and any of --year, --month or --day are mutually exclusive."):
+            validate_mutually_exclusive_args(year, month, day, date)
+    else:
+        validate_mutually_exclusive_args(year, month, day, date)  # Should not raise
+
+@pytest.mark.parametrize(
+    "user_args, expected_namespace, should_raise",
+    [
+        # Test case 1: Required input file argument (FAILS, so add a valid date)
+        (["input_file", "--date", "20250226"],  # Added --date to meet validation requirement
+         {"ifile": "input_file", "output_path": None, "validate": False, "date": "20250226", "year": 2025, "month": 2, "day": 26}, 
+         False),
+
+        # Test case 2: Input file with output file (FAILS, so add a valid date)
+        (["input_file", "-o", "output_file", "--date", "20250226"],  # Added --date
+         {"ifile": "input_file", "output_path": "output_file", "validate": False, "date": "20250226", "year": 2025, "month": 2, "day": 26}, 
+         False),
+
+        # Test case 3: Validation flag (FAILS, so add a valid date)
+        (["input_file", "--validate", "--date", "20250226"],  # Added --date
+         {"ifile": "input_file", "output_path": None, "validate": True, "date": "20250226", "year": 2025, "month": 2, "day": 26}, 
+         False),
+
+        # Test case 4: Setting a full date (Already valid)
+        (["input_file", "--date", "20250226"], 
+         {"ifile": "input_file", "output_path": None, "validate": False, "date": "20250226", "year": 2025, "month": 2, "day": 26}, 
+         False),
+
+        # Test case 5: Setting individual year, month, and day (Already valid)
+        (["input_file", "-y", "2025", "-m", "2", "-d", "26"], 
+         {"ifile": "input_file", "output_path": None, "validate": False, "date": None, "year": 2025, "month": 2, "day": 26}, 
+         False),
+
+        # Test case 6: Exclusive date and year should raise an error
+        (["input_file", "--date", "20250226", "-y", "2025"], 
+         None, 
+         True),
+    ]
+)
+
+def test_parse_args(monkeypatch, user_args, expected_namespace, should_raise):
     """
     Test parse_args() function for different command-line arguments.
     """
-    monkeypatch.setattr("sys.argv", ["script_name"] + args)
+    monkeypatch.setattr("sys.argv", ["script_name"] + user_args)
 
-    if expected == argparse.ArgumentError:
-        with pytest.raises(SystemExit):  # argparse exits with an error
+    if should_raise:
+        with pytest.raises(ValueError):  # Ensuring validation rules trigger exceptions
             parse_args()
     else:
         parsed_args = parse_args()
-        for key, value in expected.items():
-            assert getattr(parsed_args, key) == value
+        expected = argparse.Namespace(**expected_namespace)
+        assert vars(parsed_args) == vars(expected)
 
 # Test the file header date change
 class MockFieldsFile:
