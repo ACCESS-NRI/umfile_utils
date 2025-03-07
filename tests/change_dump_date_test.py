@@ -180,7 +180,6 @@ def test_validate_mutually_exclusive_args(year, month, day, date, should_raise):
          True),
     ]
 )
-
 def test_parse_args(monkeypatch, user_args, expected_namespace, should_raise):
     """
     Test parse_args() function for different command-line arguments.
@@ -269,7 +268,6 @@ def test_change_header_date_field(new_year, new_month, new_day, expected_year, e
         assert field.lbyr == expected_year
         assert field.lbmon == expected_month
         assert field.lbdat == expected_day
-# Assuming your function is already defined as `create_default_outname`
 @pytest.mark.parametrize(
     "existing_files, filename, suffix, expected_output",
     [
