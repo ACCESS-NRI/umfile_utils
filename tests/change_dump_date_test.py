@@ -1,9 +1,7 @@
 import pytest
 import argparse
 from unittest.mock import MagicMock, patch
-import os
 from copy import deepcopy
-import mule
 from change_dump_date import (    
     validate_year_value, 
     validate_month_value, 
@@ -13,7 +11,7 @@ from change_dump_date import (
     validate_mutually_exclusive_args,
     parse_args,
     change_header_date_file, 
-    change_header_date_field, 
+    change_header_date_all_fields, 
     create_default_outname,
     void_validation
 )
@@ -24,9 +22,13 @@ from change_dump_date import (
         ("0", 0, False),
         ("2024", 2024, False),
         ("9999", 9999, False),
+        ("472", 472, False),
+        ("23", 23, False),
+        ("5", 5, False),
         ("-1", None, True),  # Below range
         ("10000", None, True),  # Above range
         ("abcd", None, True),  # Non-numeric
+        ("None", None, False),  # None input
     ],
 )
 def test_validate_year_value(input, expected_output, should_raise):
@@ -49,6 +51,7 @@ def test_validate_year_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("13", None, True),  # Above range
         ("abc", None, True),  # Non-numeric
+        ("None", None, False),  # None input
     ],
 )
 def test_validate_month_value(input, expected_output, should_raise):
@@ -71,6 +74,7 @@ def test_validate_month_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("32", None, True),  # Above range
         ("xyz", None, True),  # Non-numeric
+        ("None", None, False),  # None input
     ],
 )
 def test_validate_day_value(input, expected_output, should_raise):

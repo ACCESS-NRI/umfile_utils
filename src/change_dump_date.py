@@ -58,11 +58,6 @@ def validate_date_value(value):
     month = validate_month_value(value[4:6])
     day = validate_day_value(value[6:])
 
-    # Validate extracted month and day
-    if month < 1 or month > 12:
-        raise argparse.ArgumentTypeError(f"Invalid month: {month}. Must be between 1 and 12.")
-    if day < 1 or day > 31:  # More validation can be added for actual months
-        raise argparse.ArgumentTypeError(f"Invalid day: {day}. Must be between 1 and 31.")
     return (year,month,day)
 
 def validate_mutually_exclusive_args(year, month, day, date):
@@ -143,7 +138,7 @@ def change_header_date_file(ff, new_year, new_month, new_day):
         ff.fixed_length_header.t1_day = new_day
         ff.fixed_length_header.v1_day = new_day
 
-def change_header_date_field(ff, new_year, new_month, new_day):
+def change_header_date_all_fields(ff, new_year, new_month, new_day):
     """
     Update the header date of each field in the  UM fields file.
 
@@ -226,4 +221,4 @@ def main():
 
 if __name__== "__main__":
 
-    main()
+    main() # pragma: no cover
