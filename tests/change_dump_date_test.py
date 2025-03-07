@@ -28,7 +28,7 @@ from change_dump_date import (
         ("-1", None, True),  # Below range
         ("10000", None, True),  # Above range
         ("abcd", None, True),  # Non-numeric
-        ("None", None, False),  # None input
+        ("None", None, True),  # None input
     ],
 )
 def test_validate_year_value(input, expected_output, should_raise):
@@ -51,7 +51,7 @@ def test_validate_year_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("13", None, True),  # Above range
         ("abc", None, True),  # Non-numeric
-        ("None", None, False),  # None input
+        ("None", None, True),  # None input
     ],
 )
 def test_validate_month_value(input, expected_output, should_raise):
@@ -74,7 +74,7 @@ def test_validate_month_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("32", None, True),  # Above range
         ("xyz", None, True),  # Non-numeric
-        ("None", None, False),  # None input
+        ("None", None, True),  # None input
     ],
 )
 def test_validate_day_value(input, expected_output, should_raise):
@@ -197,17 +197,23 @@ def test_parse_args(monkeypatch, user_args, expected_namespace, should_raise):
         assert vars(parsed_args) == vars(expected)
 
 # Test the file header date change
-class MockFieldsFile:
-    def __init__(self):
-        self.fixed_length_header = MockHeader()
-class MockHeader:
-    def __init__(self):
-        self.t1_year = 2000
-        self.v1_year = 2000
-        self.t1_month = 1
-        self.v1_month = 1
-        self.t1_day = 1
-        self.v1_day = 1
+@pytest.fixture
+def create_mock_umfile():
+    def _mock_umfile():
+        """Factory function to create a mule UMfile mock object and initialize it with empty fields."""
+        return MagicMock(fields=[])
+
+    return _mock_umfile
+@pytest.fixture
+def mock_fixed_length_header():
+    fixed_length_header = MagicMock()
+    fixed_length_header.t1_year = 2000
+    fixed_length_header.v1_year = 2000
+    fixed_length_header.t1_month = 1
+    fixed_length_header.v1_month = 1
+    fixed_length_header.t1_day = 1
+    fixed_length_header.v1_day = 1
+    return fixed_length_header
 
 # Parameterized test for the function
 @pytest.mark.parametrize(
@@ -265,10 +271,10 @@ def test_change_header_date_all_fields(new_year, new_month, new_day, expected_ye
     """
     ff = create_mock_umfile()  # Create a mock FieldsFile with 3 fields
     ff.fields = [
-        create_mock_field(lbyr=1993, lbmon=2, lbdat=12) for _ in range(3),
+        create_mock_field(lbyr=1993, lbmon=2, lbdat=12) for _ in range(3)
     ]
 
-    change_header_date_field(ff, new_year, new_month, new_day)
+    change_header_date_all_fields(ff, new_year, new_month, new_day)
 
     # Check that each field's header date has been updated correctly
     for field in ff.fields:
