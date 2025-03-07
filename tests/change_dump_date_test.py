@@ -92,9 +92,11 @@ def test_validate_day_value(input, expected_output, should_raise):
     "input, expected_output, should_raise",
     [
         ("20240226", (2024, 2, 26), False),  # Valid date (adjusted output to tuple)
-        ("19991231", (1999, 12, 31), False),  # Valid date
-        ("00000000", None, True),  # Edge case Invalid (month and day cannot be 0)
+        ("00000504", (0, 5, 4), False),  # Valid date
+        ("13020021", None, True),  # Edge case Invalid (month cannot be 0)
+        ("92113000", None, True),  # Edge case Invalid (day cannot be 0)
         ("20241301", None, True),  # Invalid month (13)
+        ("20250173", None, True),  # Invalid day (73)
         ("202402", None, True),  # Too short
         ("abcdefgh", None, True),  # Non-numeric
     ],
@@ -218,12 +220,13 @@ class MockHeader:
         (None, None, None, 2000, 1, 1),  # Test case 5: No changes
     ]
 )
-def test_change_header_date_file(new_year, new_month, new_day, expected_year, expected_month, expected_day):
+def test_change_header_date_file(new_year, new_month, new_day, expected_year, expected_month, expected_day, create_mock_umfile, mock_fixed_length_header):
     """
     This test check that the fileheader is being changed properly depending on which parameters it is given.
     """
 
-    ff = MockFieldsFile()
+    ff = create_mock_umfile()
+    ff.fixed_length_header = mock_fixed_length_header
 
     change_header_date_file(ff, new_year, new_month, new_day)
 
@@ -235,31 +238,35 @@ def test_change_header_date_file(new_year, new_month, new_day, expected_year, ex
     assert ff.fixed_length_header.v1_day == expected_day
 
 # Mocking the fields and the FieldsFile
-class MockField:
-    def __init__(self):
-        self.lbyr = 2000  # Default year
-        self.lbmon = 1    # Default month
-        self.lbdat = 1    # Default day
-class MockFieldsTestFile:
-    def __init__(self, num_fields=1):
-        self.fields = [MockField() for _ in range(num_fields)]  # Create a list of fields
+@pytest.fixture
+def create_mock_field():
+    """Factory function to create a mule field mock object."""
+
+    def _create_field(**kwargs):
+        return MagicMock(
+            **kwargs,
+        )
+    return _create_field
 
 # Parameterized test for the function
 @pytest.mark.parametrize(
     "new_year, new_month, new_day, expected_year, expected_month, expected_day",
     [
         (2025, 12, 31, 2025, 12, 31),  # Test case 1: Set full date
-        (2025, None, None, 2025, 1, 1),  # Test case 2: Only year set
-        (None, 5, None, 2000, 5, 1),  # Test case 3: Only month set
-        (None, None, 15, 2000, 1, 15),  # Test case 4: Only day set
-        (None, None, None, 2000, 1, 1),  # Test case 5: No changes
+        (2025, None, None, 2025, 2, 12),  # Test case 2: Only year set
+        (None, 5, None, 1993, 5, 12),  # Test case 3: Only month set
+        (None, None, 15, 1993, 2, 15),  # Test case 4: Only day set
+        (None, None, None, 1993, 2, 12),  # Test case 5: No changes
     ]
 )
-def test_change_header_date_field(new_year, new_month, new_day, expected_year, expected_month, expected_day):
+def test_change_header_date_all_fields(new_year, new_month, new_day, expected_year, expected_month, expected_day, create_mock_umfile, create_mock_field):
     """
     This test checks that the header date of each field is changed correctly based on the input parameters.
     """
-    ff = MockFieldsTestFile(num_fields=3)  # Create a mock FieldsFile with 3 fields
+    ff = create_mock_umfile()  # Create a mock FieldsFile with 3 fields
+    ff.fields = [
+        create_mock_field(lbyr=1993, lbmon=2, lbdat=12) for _ in range(3),
+    ]
 
     change_header_date_field(ff, new_year, new_month, new_day)
 
