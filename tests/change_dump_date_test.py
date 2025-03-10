@@ -13,7 +13,8 @@ from umfile_utils.change_dump_date import (
     change_header_date_file, 
     change_header_date_all_fields, 
     create_default_outname,
-    void_validation
+    void_validation,
+    main,
 )
 
 @pytest.mark.parametrize(
@@ -28,7 +29,8 @@ from umfile_utils.change_dump_date import (
         ("-1", None, True),  # Below range
         ("10000", None, True),  # Above range
         ("abcd", None, True),  # Non-numeric
-        ("None", None, True),  # None input
+        ("None", None, True),  # "None" input in string
+        (None, None, False),  # None input
     ],
 )
 def test_validate_year_value(input, expected_output, should_raise):
@@ -51,7 +53,8 @@ def test_validate_year_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("13", None, True),  # Above range
         ("abc", None, True),  # Non-numeric
-        ("None", None, True),  # None input
+        ("None", None, True),  # "None" input in string
+        (None, None, False),  # None input
     ],
 )
 def test_validate_month_value(input, expected_output, should_raise):
@@ -74,7 +77,8 @@ def test_validate_month_value(input, expected_output, should_raise):
         ("0", None, True),  # Below range
         ("32", None, True),  # Above range
         ("xyz", None, True),  # Non-numeric
-        ("None", None, True),  # None input
+        ("None", None, True),  # "None" input in string
+        (None, None, False),  # None input
     ],
 )
 def test_validate_day_value(input, expected_output, should_raise):
@@ -372,3 +376,65 @@ def test_void_validation(capfd):
     # Test no side effects for input arguments
     assert args == init_args
     assert kwargs == init_kwargs
+
+@patch("umfile_utils.change_dump_date.parse_args")
+@patch("mule.load_umfile")
+@patch("umfile_utils.change_dump_date.create_default_outname")
+@patch("umfile_utils.change_dump_date.void_validation")
+@patch("umfile_utils.change_dump_date.change_header_date_file")
+@patch("umfile_utils.change_dump_date.change_header_date_all_fields")
+def test_main(
+    mock_change_header_date_all_fields,
+    mock_change_header_date_file,
+    mock_void_validation,
+    mock_create_default_outname,
+    mock_mule_load_umfile,
+    mock_parse_args,
+    create_mock_umfile,
+    create_mock_field,
+):
+    """Test the main function."""
+    # Mock the return value of parse_args
+    mock_args = MagicMock(
+        ifile="test_input_file",
+        date='19920504',
+        year=1992,
+        month=4,
+        day=4,
+        validate=True,
+        output_path=None,
+    )
+
+    mock_parse_args.return_value = mock_args
+
+    # Mock the return value of mule.load_umfile
+    mock_ff = create_mock_umfile()
+    mock_mule_load_umfile.return_value = mock_ff
+    
+    main()
+
+    # Assertions
+    mock_parse_args.assert_called_once()
+    mock_create_default_outname.assert_called_once_with(mock_args.ifile)
+    mock_mule_load_umfile.assert_called_once_with(mock_args.ifile)
+    mock_change_header_date_file.assert_called_once_with(mock_ff, mock_args.year, mock_args.month, mock_args.day)
+    mock_change_header_date_all_fields.assert_called_once_with(mock_ff, mock_args.year, mock_args.month, mock_args.day)
+    mock_void_validation.assert_not_called()
+
+    #  ============= #
+    # Case with validation disabled and output path provided
+    #  ============= #
+
+    # Reset mock calls
+    mock_create_default_outname.reset_mock()
+    
+    # Set the output path and validate to False
+    mock_args.output_path = "test_output_file"
+    mock_args.validate = False
+    
+    main()
+
+    # Assertions
+    assert mock_ff.validate == mock_void_validation
+    mock_create_default_outname.assert_not_called()
+

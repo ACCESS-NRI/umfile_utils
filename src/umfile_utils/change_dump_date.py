@@ -206,13 +206,13 @@ def main():
     ff = mule.load_umfile(args.ifile)
 
     output_file = create_default_outname(args.ifile) if args.output_path is None else args.output_path
+    
     # Skip mule validation if the "--validate" option is provided
-
     if not args.validate:
         ff.validate = void_validation
 
     change_header_date_file(ff, args.year, args.month, args.day)
-    change_header_date_field(ff, args.year, args.month, args.day)
+    change_header_date_all_fields(ff, args.year, args.month, args.day)
 
     # Create the output filename
 
