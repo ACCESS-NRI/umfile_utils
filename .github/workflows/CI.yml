@@ -61,7 +61,7 @@ jobs:
         - name: Verify conda recipe
           shell: bash -el {0}
           run: conda-verify .conda --ignore C2105,C2122
-          # C2105: invalid package version for 'replace_landsurface' 
+          # C2105: invalid package version for ...
           # (there is no git tag in this test so versioneer outputs a 
           # version that conda-verify recognizes as 'invalid')
           # C2122: invalid license family
@@ -74,7 +74,7 @@ jobs:
         - name: Verify conda package
           shell: bash -el {0}
           run: conda-verify ${{steps.set-package-path.outputs.package-path}} --ignore C1105,C1115,C1141
-          # C1105: invalid version number for 'replace_landsurface' 
+          # C1105: invalid version number for ... 
           # (there is no git tag in this test so versioneer outputs a 
           # version that conda-verify recognizes as 'invalid')
           # C1115: Found invalid license
