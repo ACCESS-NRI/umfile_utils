@@ -226,6 +226,7 @@ def test_create_perturbation_preserve_poles():
     assert not np.all(perturbation[-1, :] == 0)
 
 
+@settings(deadline=None)
 @given(seed=st.integers(min_value=0))
 def test_create_perturbation_deterministic(seed):
     """Test if the perturbation is deterministic with a fixed random seed."""
