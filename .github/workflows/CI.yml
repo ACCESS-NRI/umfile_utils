@@ -97,7 +97,7 @@ jobs:
           with:
             miniconda-version: "latest"
             python-version: ${{ matrix.python-version }}
-            environment-file: env_dev.yml
+            environment-file: .conda/env_dev.yml
             auto-activate-base: false
             activate-environment: umfile-utils-dev
             auto-update-conda: false
