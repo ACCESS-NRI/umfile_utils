@@ -1,12 +1,12 @@
 [project]
-name = "umfile-utils"
+name = "umfile_utils"
 dynamic = ["version"]
 authors = [
   {name = "Martin Dix", email="martin.dix@anu.edu.au"},
   {name = "Lindsey Oberhelman", email="lindsey.oberhelman@anu.edu.au"},
   {name = "Davide Marchegiani", email="davide.marchegiani@anu.edu.au"},
 ]
-description = "Collection of tools for UM fieldsfiles."
+description = "Collection of tools to process UM files (https://code.metoffice.gov.uk/doc/um/latest/papers/umdp_F03.pdf)."
 license = { file = "LICENSE" }
 keywords = ["UM", "UM utilities", "UM fields files", "umfile_utils"]
 requires-python = ">=3.10"
@@ -14,6 +14,7 @@ dependencies = [
     "mule",
     "numpy <2",
     "versioneer",
+    "xarray",
 ]
 
 [project.urls]
@@ -25,6 +26,11 @@ requires = [
     "setuptools>64", 
     "versioneer[toml]"
 ]
+
+[project.scripts]
+change_dump_date = "umfile_utils.change_dump_date:main"
+perturbic = "umfile_utils.perturbIC:main"
+fields_subset = "umfile_utils.um_fields_subset:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

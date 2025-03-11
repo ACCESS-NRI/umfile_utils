@@ -6,13 +6,12 @@ channels:
   - nodefaults
 dependencies:
   - python >=3.10
-  - pytest
-  - xarray
   - mule
   - numpy < 2
   - versioneer
+  - xarray
+  - pytest
   - hypothesis
   - ipykernel
   - pytest-cov
   - pip
-  
