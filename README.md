@@ -34,46 +34,7 @@ This is defualt to the programs. The validation can be included using --validate
 ## Usage
 ### perturbIC.py 
 
-If the user wants to run perturbIC with a specific output filename
-```python
-python perturbIC input_file_path -a 0.01 -s 2234 -o output_file_path
-```
-Otherwise it is optional perturbIC will create a filename from the input path
-```python
-python perturbIC input_file_path -a 0.01 -s 2234
-```
 
-The amplitude and seed are also optional as well
-```python
-python perturbIC input_file_path -a 0.01 -s 2234
-```
-### um_fields_subset.py
-
-To take a subset of field the user must provide a either a list of fields to exculde (-x)
-```python
-python um_fields_subset.py input_file_path -x 155,156,3100,3101
-```
-
-To take a subset of field the user must provide a either a list of fields to include (-v)
-```python
-python um_fields_subset.py input_file_path -v 155,156,3100,3101
-```
-
-Or you can choose to have the program to only include pronostics -p
-```python
-python um_fields_subset.py input_file_path -p
-```
-These three options must be run seperately
-
-### change_dump_date.py
-User can either enter in a year, month, and day seperately (-y -m -d),
-```python
-python change_dump_date.py input_file_path -y 2025 -m 1 -d 22
-```
-or the user can enter in a date in the format of YYYYMMDD.
-```python
-python change_dump_date.py input_file_path -date 20250122
-```
 ## Contributing
 TO BE ADDED
 
