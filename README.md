@@ -9,7 +9,7 @@ UMfile_util is a Python library that provides specific tools to process [UM file
 - [change_date](#change-date)
 
 ### perturbIC.py 
-The `perturbIC` function applies a random perturbation to a restart file, with an optional seed to control the random generation. 
+The `perturbIC` function applies a random perturbation to a restart file, with an optional seed to control the random generation.
 This can be useful for simulations that fail due to random divergence or for generating multiple ensemble members in climate experiments.
 
 Run `pertubIC --help` for detailed usage information.
