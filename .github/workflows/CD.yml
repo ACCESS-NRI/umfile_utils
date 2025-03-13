@@ -34,6 +34,11 @@ jobs:
     if: ${{ needs.check-release-tag.outputs.is_release_tag == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
       - name: Version sanity check
         run: |
           # Don't allow smaller new versions or jumping versions in the MAJOR.MINOR.PATCH format
@@ -149,6 +154,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
       - name: Delete tag
         run: |
           git push origin :${{ github.ref_name }}
