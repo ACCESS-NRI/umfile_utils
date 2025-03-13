@@ -1,6 +1,7 @@
 import os
 import mule
 import argparse
+from textwrap import dedent
 
 def validate_year_value(value):
     """
@@ -48,10 +49,6 @@ def validate_date_value(value):
     """
     Ensures the date is in YYYYMMDD format and extract year, month, and day.
     """
-    try:
-        ivalue = int(value)
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be in YYYYMMDD format.")
     if len(value) != 8:
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be exactly 8 digits (YYYYMMDD).")
     year = validate_year_value(value[:4])
@@ -83,7 +80,18 @@ def parse_args():
     argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Modify UM dump file initial and valid dates")
+    DESCRIPTION = dedent(
+        """
+        Change the time metadata of a UM restart file, without modifying its data content.
+        
+        Examples:
+        
+        1. Change date of a UM restart file to the 22nd Jan 2025
+        `change_dump_date /path/to/restart.dump --date 20250122`
+        """
+    )
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
+
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
                         help='Path to the output file. If omitted, the default output file is created by appending "_newdate" to the input path.')

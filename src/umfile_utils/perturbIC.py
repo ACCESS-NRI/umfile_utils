@@ -5,9 +5,12 @@
 
 import os
 import argparse
+from textwrap import dedent
 from numpy.random import PCG64, Generator
 import mule
+
 TIMESERIES_LBCODES = (31320, 31323)
+STASH_THETA = 4
 
 def parse_args():
     """
@@ -22,7 +25,21 @@ def parse_args():
     args_parsed : argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Perturb UM initial dump")
+    DESCRIPTION = dedent(
+        """
+        Apply a random perturbation to a restart file, with an optional seed to control the random generation.
+        The perturbation is applied to the potential tempoerature (theta) field (STASH itemcode 4) by default.
+        
+        Examples:
+        
+        1. Perturbate initial conditions of an experiment that fail due to divergence
+        `perturbIC /path/to/restart.dump`
+        
+        2. Generate initial conditions for 10 ensemble members from the same restart file
+        `for ens in {1..10}; do perturbIC /path/to/restart.dump -a 0.005 -s $ens -o /path/to/restart.dump_ensamble{$ens}; done`
+        """
+    )
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     # Positional arguments
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     # Optional arguments
@@ -186,10 +203,6 @@ def main():
     """
     Add a bi-dimensional random perturbation to the potential temperature field 'Theta' (STASH itemcode = 4) of a UM fields file.
     """
-
-    # Define all the variables  
-    STASH_THETA = 4
-
     # Parse the command line arguments
     args = parse_args()
 
