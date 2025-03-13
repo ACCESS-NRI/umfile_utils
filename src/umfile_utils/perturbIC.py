@@ -8,6 +8,7 @@ import argparse
 from numpy.random import PCG64, Generator
 import mule
 TIMESERIES_LBCODES = (31320, 31323)
+function_description = "This function applies a random perturbation to the surface temperature in the restart file. Example: perturbIC input_file_path -a 0.01 -s 2234 -o output_file_path"
 
 def parse_args():
     """
@@ -22,7 +23,7 @@ def parse_args():
     args_parsed : argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Perturb UM initial dump")
+    parser = argparse.ArgumentParser(description=function_description)
     # Positional arguments
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     # Optional arguments
