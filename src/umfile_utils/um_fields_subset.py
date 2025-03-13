@@ -12,12 +12,10 @@ import mule
 import os
 import argparse
 import warnings
+from textwrap import dedent
 from itertools import chain
+
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
-function_description = "This function provides a subset UM fields based on user-specified options.\
-    Inclusive Example: um_fields_subset input_file_path --include 155,156,3100,3101\
-    Exclusive Example: um_fields_subset input_file_path --exclude 155,156,3100,3101\
-    Prognostic Example: um_fields_subset input_file_path -p -o output_file_string"
 
 def convert_to_list(value: str):
     """
@@ -55,7 +53,23 @@ def parse_args():
     args_parsed : argsparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description=function_description)
+    DESCRIPTION = dedent(
+        """
+        Subset a UM file to generate an output containing only selected fields. 
+        
+        Examples:
+        
+        1. Subset UM file only including STASH codes 155, 156, 3100 and 3101
+        `um_fields_subset /path/to/um/file --include 155,156,3100,3101`
+        
+        2. Subset UM file excluding the STASH codes 132 and 14020
+        `um_fields_subset /path/to/um/file --exclude 132,14020`
+        
+        2. Subset UM file only including prognostic STASH codes
+        `um_fields_subset /path/to/um/file -p`
+        """
+    )
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
 
     # Positional arguments
     parser.add_argument(dest='ifile', metavar="INPUT_PATH", help='Path to the input file.')
@@ -65,9 +79,9 @@ def parse_args():
     meg.add_argument('-p', '--prognostic', dest='prognostic',  action='store_true',
                         help="Only include prognostic variables (sections 0, 33 and 34). Cannot be used together with --include or --exclude.")
     meg.add_argument('--include', dest='include_list',  type=convert_to_list, metavar="STASH_CODES",
-                        help="Comma-separated list of STASH codes to include in the output file. Any STASH code present in the input file, but not contained in this STASH code list, will not be present in the output file. Cannot be used together with --prognostic or --exclude.")
+                        help="Comma-separated list of STASH codes to include in the output file. Any STASH code present in the input file but not contained in this STASH code list will not be present in the output file. Cannot be used together with --prognostic or --exclude.")
     meg.add_argument('--exclude', dest='exclude_list',  type=convert_to_list, metavar="STASH_CODES",
-                        help="Comma-separated list of STASH codes to exclude from the output file. All STASH codes present in the input file, but not contained in this STASH code list, will be present in the output file. Cannot be used together with --prognostic or --include.")
+                        help="Comma-separated list of STASH codes to exclude from the output file. All STASH codes present in the input file but not contained in this STASH code list will be present in the output file. Cannot be used together with --prognostic or --include.")
     parser.add_argument('--validate', action='store_true',
                         help='Validate the output fields file using mule validation.')
     # Parse arguments
