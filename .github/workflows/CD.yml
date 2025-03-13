@@ -23,7 +23,7 @@ jobs:
           is_release_tag=true
           tag='${{ github.ref_name }}'
           if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::warning::The tag '$tag' was not recognised as a release tag (MAJOR.MINOR.PATCH patch). Therefore, no release will be created."
+            echo "::warning::The tag '$tag' was not recognised as a release tag (MAJOR.MINOR.PATCH format). Therefore, no release was created."
             is_release_tag=false
           fi
           echo "is_release_tag=$is_release_tag" >> $GITHUB_OUTPUT
