@@ -1,6 +1,9 @@
 import os
 import mule
 import argparse
+function_description = "It allows the user to change the timestamps (metadata) of a restart dump file,\
+without modifying its data content. Date Example: change_dump_date input_file_path -date 20250122\
+YMD Example: change_dump_date input_file_path -y 2025 -m 1 -d 22"
 
 def validate_year_value(value):
     """
@@ -83,7 +86,7 @@ def parse_args():
     argparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Modify UM dump file initial and valid dates")
+    parser = argparse.ArgumentParser(description=function_description)
     parser.add_argument('ifile', metavar="INPUT_PATH", help='Path to the input file.')
     parser.add_argument('-o', '--output', dest='output_path', metavar="OUTPUT_PATH",
                         help='Path to the output file. If omitted, the default output file is created by appending "_newdate" to the input path.')
