@@ -49,10 +49,6 @@ def validate_date_value(value):
     """
     Ensures the date is in YYYYMMDD format and extract year, month, and day.
     """
-    try:
-        ivalue = int(value)
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be in YYYYMMDD format.")
     if len(value) != 8:
         raise argparse.ArgumentTypeError(f"Invalid date: {value}. Must be exactly 8 digits (YYYYMMDD).")
     year = validate_year_value(value[:4])
