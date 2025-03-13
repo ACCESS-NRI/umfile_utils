@@ -22,13 +22,16 @@ group of fields from the file. Both of these functionalities will create a new o
 Run `um_fields_subset --help` for detailed usage information.
 
 ### change_date.py
-This code runs on any UM field file. It allows the user to change the timestamps (metadata) of a restart dump file, without modifying 
-its data content. It changes the initial and valid date of the header and the header date of each field in the file.
+This code runs on any UM field file. It allows the user to change the timestamps (metadata) of a restart dump file, without modifying its data content. It changes the initial and valid date of the header and the header date of each field in the file.
 
 Run `change_date --help` for detailed usage information
 
 Currently these programs include a work around to deal with the river field grids and need to be run without the mule validation. 
 This is defualt to the programs. The validation can be included using --validate
+
+## Installation Requirments
+mule 
+
 
 ## Installation
 TO BE ADDED
