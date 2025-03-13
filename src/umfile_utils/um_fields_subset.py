@@ -14,6 +14,10 @@ import argparse
 import warnings
 from itertools import chain
 PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
+function_description = "This function provides a subset UM fields based on user-specified options.\
+    Inclusive Example: um_fields_subset input_file_path --include 155,156,3100,3101\
+    Exclusive Example: um_fields_subset input_file_path --exclude 155,156,3100,3101\
+    Prognostic Example: um_fields_subset input_file_path -p -o output_file_string"
 
 def convert_to_list(value: str):
     """
@@ -51,7 +55,7 @@ def parse_args():
     args_parsed : argsparse.Namespace
         Argparse namespace containing the parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Subset UM fields based on user-specified options.")
+    parser = argparse.ArgumentParser(description=function_description)
 
     # Positional arguments
     parser.add_argument(dest='ifile', metavar="INPUT_PATH", help='Path to the input file.')
