@@ -42,7 +42,7 @@ jobs:
       - name: Version sanity check
         run: |
           # Don't allow smaller new versions or jumping versions in the MAJOR.MINOR.PATCH format
-          old_tag_name=$(git tag --list --sort=-taggerdate | sed -n '2p')
+          old_tag_name=$(git tag --list --sort=-version:refname | sed -n '2p')
           if [ -z "$old_tag_name" ]; then
             echo "No previous version found. Skipping version sanity check."
             exit 0
