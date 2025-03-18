@@ -1,0 +1,168 @@
+name: CD
+
+on:
+    push:
+      tags:
+        - '**'
+env:
+  RELEASE_TAG_REGEX: ^[0-9]+\.[0-9]+\.[0-9]+$
+
+jobs:
+  check-release-tag:
+    name: Check release tag
+    runs-on: ubuntu-latest
+    outputs:
+        is_release_tag: ${{ steps.check-tag.outputs.is_release_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Check tag
+        id: check-tag
+        run: |
+          is_release_tag=true
+          tag='${{ github.ref_name }}'
+          if [[ ! "$tag" =~ ${{ env.RELEASE_TAG_REGEX }} ]]; then
+            echo "::warning::The tag '$tag' was not recognised as a release tag (MAJOR.MINOR.PATCH format). Therefore, no release was created."
+            is_release_tag=false
+          fi
+          echo "is_release_tag=$is_release_tag" >> $GITHUB_OUTPUT
+    
+  version-sanity-check:
+    name: Version sanity check
+    needs: [check-release-tag]
+    if: ${{ needs.check-release-tag.outputs.is_release_tag == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Version sanity check
+        run: |
+          # Don't allow smaller new versions or jumping versions in the MAJOR.MINOR.PATCH format
+          old_tag_name=$(git tag --list --sort=-version:refname | grep -E '${{ env.RELEASE_TAG_REGEX }}' | sed -n '2p')
+          if [ -z "$old_tag_name" ]; then
+            echo "No previous version found. Skipping version sanity check."
+            exit 0
+          fi
+          new_tag_name='${{ github.ref_name }}'
+          read -r old_major old_minor old_patch <<< $(echo $old_tag_name | tr '.' ' ')
+          read -r new_major new_minor new_patch <<< $(echo $new_tag_name | tr '.' ' ')
+          error_msg="Version tag inconsistent!\nVersion '$new_tag_name' cannot come after version '$new_tag_name' (latest released version)."
+          # Check MAJOR
+          # - New major version cannot be smaller than previous 
+          # - Major version can only be incremented by 1 at a time
+          if (( new_major < old_major || new_major > old_major + 1 )); then
+            echo -e "$msg"
+            exit 1
+          fi
+          # Check MINOR
+          # - New minor version cannot be smaller than previous if major version is same
+          # - New minor version can only be 0 if major version is incremented
+          # - New minor version can only be incremented by 1 at a time
+          if (( (new_major == old_major && new_minor < old_minor) || (new_major > old_major && new_minor != 0) || (new_minor > old_minor + 1) )); then
+            echo -e "$msg"
+            exit 1
+          fi
+          # Check PATCH
+          # - New patch version must be bigger than previous if minor version is same
+          # - New patch version can only be 0 if minor version is incremented
+          # - New patch version can only be incremented by 1 at a time
+          if (( (new_minor == old_minor && new_patch <= old_patch) || (new_minor > old_minor && new_patch != 0) || (new_patch > old_patch + 1) )); then
+            echo -e "$msg"
+            exit 1
+          fi
+
+  get-package-name:
+    name: Get package name
+    needs: [check-release-tag]
+    if: ${{ needs.check-release-tag.outputs.is_release_tag == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+        package-name: ${{ steps.get-package-name.outputs.package-name }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+
+      - name: Get name
+        id: get-package-name
+        run: |
+          echo "package-name=$(yq '.project.name' pyproject.toml)" >> $GITHUB_OUTPUT
+        
+  release-conda-package:
+    name: Build with conda and release
+    runs-on: ubuntu-latest
+    needs: [check-release-tag, version-sanity-check, get-package-name]
+    if: ${{ needs.check-release-tag.outputs.is_release_tag == 'true' }}
+    env:
+      BUILD_FOLDER: ${{github.workspace}}/build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+            fetch-tags: true
+            fetch-depth: 0 
+      
+      - name: Set package path
+        id: set-package-path
+        run: |
+          echo "package-path=${{env.BUILD_FOLDER}}/noarch/*${{vars.PACKAGE_FORMAT}}" >> $GITHUB_OUTPUT
+      
+      - name: Setup conda build environment
+        uses: conda-incubator/setup-miniconda@a4260408e20b96e80095f42ff7f1a15b27dd94ca # v3.0.4
+        with:
+          miniconda-version: "latest"
+          python-version: ${{ vars.PY_VERSION }} 
+          environment-file: .conda/env_build.yml
+          auto-activate-base: false
+          auto-update-conda: false
+          show-channel-urls: true
+      
+      - name: Build conda package
+        shell: bash -el {0}
+        run: |
+          conda build . --no-anaconda-upload --output-folder=${{env.BUILD_FOLDER}} -c accessnri -c conda-forge -c coecms --package-format ${{vars.PACKAGE_FORMAT}}
+      
+      - name: Upload conda package to Anaconda.org
+        shell: bash -el {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload --user ${{ secrets.ANACONDA_USER_NAME }} ${{steps.set-package-path.outputs.package-path}}
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 #v2.0.8
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{needs.get-package-name.outputs.package-name}} ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{steps.set-package-path.outputs.package-path}}
+
+  cleanup-tag-on-failure:
+    name: Cleanup tag
+    needs: [check-release-tag, version-sanity-check, get-package-name, release-conda-package]
+    # Run this job if the tag is a release tag and any of the previous jobs failed (and don't skip if any of the needed jobs is skipped)
+    if: ${{ always() && failure() && needs.check-release-tag.outputs.is_release_tag == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Delete tag
+        run: |
+          git push origin :${{ github.ref }}
+          echo "A job in the current workflow failed. Tag '${{ github.ref_name }}' was deleted."
+        
