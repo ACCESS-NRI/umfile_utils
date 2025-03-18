@@ -4,6 +4,8 @@ on:
     push:
       tags:
         - '**'
+env:
+  RELEASE_TAG_REGEX: ^[0-9]+\.[0-9]+\.[0-9]+$
 
 jobs:
   check-release-tag:
@@ -22,7 +24,7 @@ jobs:
         run: |
           is_release_tag=true
           tag='${{ github.ref_name }}'
-          if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$tag" =~ ${{ env.RELEASE_TAG_REGEX }} ]]; then
             echo "::warning::The tag '$tag' was not recognised as a release tag (MAJOR.MINOR.PATCH format). Therefore, no release was created."
             is_release_tag=false
           fi
@@ -42,7 +44,7 @@ jobs:
       - name: Version sanity check
         run: |
           # Don't allow smaller new versions or jumping versions in the MAJOR.MINOR.PATCH format
-          old_tag_name=$(git tag --list --sort=-version:refname | sed -n '2p')
+          old_tag_name=$(git tag --list --sort=-version:refname | grep -E '${{ env.RELEASE_TAG_REGEX }}' | sed -n '2p')
           if [ -z "$old_tag_name" ]; then
             echo "No previous version found. Skipping version sanity check."
             exit 0
@@ -161,6 +163,6 @@ jobs:
 
       - name: Delete tag
         run: |
-          git push origin :${{ github.ref_name }}
+          git push origin :${{ github.ref }}
           echo "A job in the current workflow failed. Tag '${{ github.ref_name }}' was deleted."
         
