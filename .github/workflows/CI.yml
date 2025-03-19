@@ -30,7 +30,7 @@ jobs:
                 - 'setup.py'
                 - 'pyproject.toml'
                 - '.conda/env_build.yml'
-                - '.conda/meta.yml'
+                - '.conda/meta.yaml'
 
     verify-conda-build:
       name: Conda Build
