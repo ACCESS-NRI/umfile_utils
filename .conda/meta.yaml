@@ -25,7 +25,11 @@ requirements:
         - versioneer
     run:
         {% for dep in project.get('dependencies') %}
-        - {{ dep }}
+          {% if dep.startswith('mule') %}
+            - coecms::{{ dep }}
+          {% else %}
+            - {{ dep }}
+          {% endif %}
         {% endfor %}
 
 test:
