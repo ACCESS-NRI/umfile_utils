@@ -151,7 +151,7 @@ jobs:
     name: Cleanup tag
     needs: [check-release-tag, version-sanity-check, get-package-name, release-conda-package]
     # Run this job if the tag is a release tag and any of the previous jobs failed (and don't skip if any of the needed jobs is skipped)
-    if: ${{ always() && failure() && needs.check-release-tag.outputs.is_release_tag == 'true' }}
+    if: ${{ ( always() && failure() && needs.check-release-tag.outputs.is_release_tag == 'true') || cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

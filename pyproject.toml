@@ -28,9 +28,9 @@ requires = [
 ]
 
 [project.scripts]
-change_dump_date = "umfile_utils.change_dump_date:main"
-perturbic = "umfile_utils.perturbIC:main"
-fields_subset = "umfile_utils.um_fields_subset:main"
+change_date = "umfile_utils.change_dump_date:main"
+perturbIC = "umfile_utils.perturbIC:main"
+um_fields_subset = "umfile_utils.um_fields_subset:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
