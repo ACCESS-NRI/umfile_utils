@@ -141,7 +141,7 @@ jobs:
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 #v2.0.8
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{needs.get-package-name.outputs.package-name}} ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
