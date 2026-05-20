@@ -212,11 +212,11 @@ def create_mock_umfile():
 def mock_fixed_length_header():
     fixed_length_header = MagicMock()
     fixed_length_header.t1_year = 2000
-    fixed_length_header.v1_year = 2000
+    fixed_length_header.t2_year = 2000
     fixed_length_header.t1_month = 1
-    fixed_length_header.v1_month = 1
+    fixed_length_header.t2_month = 1
     fixed_length_header.t1_day = 1
-    fixed_length_header.v1_day = 1
+    fixed_length_header.t2_day = 1
     return fixed_length_header
 
 # Parameterized test for the function
@@ -241,11 +241,11 @@ def test_change_header_date_file(new_year, new_month, new_day, expected_year, ex
     change_header_date_file(ff, new_year, new_month, new_day)
 
     assert ff.fixed_length_header.t1_year == expected_year
-    assert ff.fixed_length_header.v1_year == expected_year
+    assert ff.fixed_length_header.t2_year == expected_year
     assert ff.fixed_length_header.t1_month == expected_month
-    assert ff.fixed_length_header.v1_month == expected_month
+    assert ff.fixed_length_header.t2_month == expected_month
     assert ff.fixed_length_header.t1_day == expected_day
-    assert ff.fixed_length_header.v1_day == expected_day
+    assert ff.fixed_length_header.t2_day == expected_day
 
 # Mocking the fields and the FieldsFile
 @pytest.fixture

@@ -138,13 +138,13 @@ def change_header_date_file(ff, new_year, new_month, new_day):
 
     if new_year is not None:
         ff.fixed_length_header.t1_year = new_year
-        ff.fixed_length_header.v1_year = new_year
+        ff.fixed_length_header.t2_year = new_year
     if new_month is not None:
         ff.fixed_length_header.t1_month = new_month
-        ff.fixed_length_header.v1_month = new_month
+        ff.fixed_length_header.t2_month = new_month
     if new_day is not None:
         ff.fixed_length_header.t1_day = new_day
-        ff.fixed_length_header.v1_day = new_day
+        ff.fixed_length_header.t2_day = new_day
 
 def change_header_date_all_fields(ff, new_year, new_month, new_day):
     """
