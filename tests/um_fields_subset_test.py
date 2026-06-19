@@ -5,10 +5,11 @@ from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-from hypothesis import strategies as st
+from hypothesis import given, strategies as st
 from hypothesis.extra import numpy as stnp
 from umfile_utils.um_fields_subset import (
     PROGNOSTIC_STASH_CODES,
+    TRACER_STASH_CODES,
     convert_to_list,
     create_default_outname,
     warn_if_stash_not_present,
@@ -17,10 +18,15 @@ from umfile_utils.um_fields_subset import (
     void_validation,
     include_fields,
     exclude_fields,
+    is_prognostic,
+    update_prognostic_count,
+    is_tracer,
+    update_tracer_count,
+    is_instantaneous,
     main,
 )
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def create_mock_umfile():
     def _mock_umfile():
         """Factory function to create a mule UMfile mock object and initialize it with empty fields."""
@@ -28,7 +34,7 @@ def create_mock_umfile():
 
     return _mock_umfile
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def create_mock_field():
     """Factory function to create a mule field mock object."""
 
@@ -288,11 +294,222 @@ def test_exclude_fields(create_mock_field):
             assert r.lbuser4 == er.lbuser4 # Ensure the stash codes are correct
 
 
+prognostic_codes = st.fixed_dictionaries(
+    {"lbuser4": st.integers(min_value=1, max_value=34999).filter(lambda n: n in PROGNOSTIC_STASH_CODES)}
+)
+non_prognostic_codes = st.fixed_dictionaries(
+    {"lbuser4": st.integers(min_value=1, max_value=34999).filter(lambda n: n not in PROGNOSTIC_STASH_CODES)}
+)
+@given(prognostic_codes, non_prognostic_codes)
+def test_is_prognostic(create_mock_field, prognostic_code, non_prognostic_code):
+    """Check that prognostic variables are correctly identified"""
+    mock_prognostic = create_mock_field(**prognostic_code)
+    assert is_prognostic(mock_prognostic)
+
+    mock_non_prognostic = create_mock_field(**non_prognostic_code)
+    assert not is_prognostic(mock_non_prognostic)
+
+
+instantaneous_constants = st.fixed_dictionaries(
+    {
+        "lbtim": st.integers(min_value=1, max_value=9),
+        "lbproc": st.just(0),
+        "lbcode": st.integers(min_value=0, max_value=29999)
+    }
+)
+@given(instantaneous_constants)
+def test_is_instantaneous(create_mock_field, integer_constants):
+    """Check that instantaneous variables are correctly identified"""
+    mock_field = create_mock_field(**integer_constants)
+    assert is_instantaneous(mock_field)
+
+
+non_instantaneous_constants = st.fixed_dictionaries(
+    {
+        "lbtim": st.integers(min_value=10),
+        "lbproc": st.integers().filter(lambda n: n != 0),
+        "lbcode": st.integers(min_value=30000)
+    }
+)
+@given(non_instantaneous_constants)
+def test_non_instantaneous(create_mock_field, integer_constants):
+    """Check that non-instantaneous fields are correctly identified"""
+    mock_field = create_mock_field(
+        lbtim=integer_constants["lbtim"],
+        lbproc=0,
+        lbcode=0
+    )
+    assert not is_instantaneous(mock_field)
+
+    mock_field = create_mock_field(
+        lbtim=1,
+        lbproc=integer_constants["lbproc"],
+        lbcode=0
+    )
+    assert not is_instantaneous(mock_field)
+
+    mock_field = create_mock_field(
+        lbtim=1,
+        lbproc=0,
+        lbcode=integer_constants["lbcode"]
+    )
+    assert not is_instantaneous(mock_field)
+
+
+def join_dict_strategies(*args):
+    """
+    Helper function for joining dictionary test strattegies.
+    Given multiple dictionary strategies, returns a strategy
+    which joins examples from each strategy.
+    """
+    def _join_func(*args):
+        combined = {}
+        for d in args:
+            combined.update(d)
+        return combined
+    return st.builds(_join_func, *args)
+
+
+prognostic_fields = join_dict_strategies(
+    prognostic_codes,
+    instantaneous_constants
+)
+
+# Non prognostic fields will either:
+#   1. Not have a prognostic STASH code
+#   2. Not be instantaneous
+non_prognostic_fields = (
+    join_dict_strategies(
+        prognostic_codes,
+        non_instantaneous_constants
+    ) |
+    join_dict_strategies(
+        non_prognostic_codes,
+        instantaneous_constants
+    ) |
+    join_dict_strategies(
+        non_prognostic_codes,
+        non_instantaneous_constants
+    )
+)
+
+prognostic_lists = st.lists(prognostic_fields, min_size=0, max_size=20)
+non_prognostic_lists = st.lists(non_prognostic_fields, min_size=0, max_size=20)
+@given(prognostic_lists, non_prognostic_lists, st.integers(min_value
+=0))
+def test_update_prognostic_count(create_mock_umfile,
+                                 create_mock_field,
+                                 prognostic_list,
+                                 non_prognostic_list,
+                                 initial_count):
+    """
+    Check that the update_prognostic_count function correctly calculates
+    the number of prognostic variables.
+    """
+    fields_file = create_mock_umfile()
+    fields_file.fixed_length_header.total_prognostic_fields = initial_count
+    for field in prognostic_list + non_prognostic_list:
+        fields_file.fields.append(
+            create_mock_field(**field)
+        )
+
+    update_prognostic_count(fields_file)
+
+    assert fields_file.fixed_length_header.total_prognostic_fields == len(prognostic_list)
+
+
+tracer_codes = st.fixed_dictionaries({"lbuser4": st.integers(min_value=33000, max_value=33999)})
+non_tracer_codes = st.fixed_dictionaries({"lbuser4": st.integers(min_value=1, max_value=32999)})
+@given(tracer_codes, non_tracer_codes)
+def test_is_tracer(create_mock_field, tracer_code, non_tracer_code):
+    """Check that prognostic variables are correctly identified"""
+    mock_tracer = create_mock_field(**tracer_code)
+    assert is_tracer(mock_tracer)
+
+    mock_non_tracer = create_mock_field(**non_tracer_code)
+    assert not is_tracer(mock_non_tracer)
+
+
+tracer_fields = join_dict_strategies(
+    tracer_codes,
+    instantaneous_constants
+)
+
+# Non tracer fields will either:
+#   1. Not have a tracer STASH code
+#   2. Not be instantaneous
+non_tracer_fields = (
+    join_dict_strategies(
+        tracer_codes,
+        non_instantaneous_constants
+    ) |
+    join_dict_strategies(
+        non_tracer_codes,
+        instantaneous_constants
+    ) |
+    join_dict_strategies(
+        non_tracer_codes,
+        non_instantaneous_constants
+    )
+)
+
+@given(st.integers(min_value=1, max_value=40), st.integers(min_value=0, max_value=10), st.integers(min_value=0), st.data())
+def test_update_tracer_count(create_mock_umfile,
+                             create_mock_field,
+                             num_tracer_levels,
+                             num_tracer_vars,
+                             initial_count,
+                             data):
+    """
+    Check that the update_tracer_count function correctly calculates
+    the number of tracer variables.
+    """
+    fields_file = create_mock_umfile()
+    fields_file.integer_constants.num_passive_tracers = initial_count
+    fields_file.integer_constants.num_tracer_levels = num_tracer_levels
+
+    tracer_list = data.draw(st.lists(tracer_fields, min_size=num_tracer_levels * num_tracer_vars, max_size=num_tracer_levels * num_tracer_vars))
+    non_tracer_list = data.draw(st.lists(non_tracer_fields, min_size=1, max_size=20))
+
+    for field in tracer_list + non_tracer_list:
+        fields_file.fields.append(
+            create_mock_field(**field)
+        )
+
+    update_tracer_count(fields_file)
+
+    assert fields_file.integer_constants.num_passive_tracers == num_tracer_vars
+
+
+@given(st.data())
+def test_update_tracer_count_error(create_mock_umfile,
+                             create_mock_field,
+                             data):
+    """
+    Check that the update_ function correctly calculates
+    the number of prognostic variables.
+    """
+    fields_file = create_mock_umfile()
+    fields_file.integer_constants.num_tracer_levels = 2
+    num_tracers = 7
+    tracer_list = data.draw(st.lists(tracer_fields, min_size=num_tracers, max_size=num_tracers))
+
+    for field in tracer_list:
+        fields_file.fields.append(
+            create_mock_field(**field)
+        )
+
+    with pytest.raises(ValueError, match="Number of tracer levels"):
+        update_tracer_count(fields_file)
+
+
 @patch("umfile_utils.um_fields_subset.parse_args")
 @patch("umfile_utils.um_fields_subset.create_default_outname")
 @patch("mule.DumpFile.from_file")
 @patch("umfile_utils.um_fields_subset.filter_fieldsfile")
 @patch("umfile_utils.um_fields_subset.void_validation")
+@patch("umfile_utils.um_fields_subset.update_prognostic_count")
+@patch("umfile_utils.um_fields_subset.update_tracer_count")
 def test_main(
     mock_void_validation,
     mock_filter_fieldsfile,

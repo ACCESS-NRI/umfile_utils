@@ -15,8 +15,10 @@ import warnings
 from textwrap import dedent
 from itertools import chain
 
-PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(33001,34999+1)))
-TRACER_STASH_CODES = tuple(range(33001, 33999+1))
+# Prognostic variables have section 0, 33 (tracers), or 34 (UKCA).
+# Tracer flux variables 3100 - 3129 are also treated as prognostic.
+PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(3100,3129+1), range(33001,34999+1)))
+TRACER_STASH_CODES = tuple(range(33000, 33999+1))
 
 def convert_to_list(value: str):
     """
@@ -233,7 +235,7 @@ def update_prognostic_count(fields_file):
     None
     """
     previous_count = fields_file.fixed_length_header.total_prognostic_fields
-    updated_count = sum([is_prognostic(field) for field in fields_file.fields])
+    updated_count = sum([is_prognostic(field) and is_instantaneous(field) for field in fields_file.fields])
     if updated_count != previous_count:
         print(f"Resetting no. of prognostic fields from {previous_count} to {updated_count}")
         fields_file.fixed_length_header.total_prognostic_fields = updated_count
@@ -253,12 +255,7 @@ def is_prognostic(field):
     bool
         Whether the field is prognostic or not.
     """
-    section = field.lbuser4//1000
-    # Prognostic variables have section 0, 33 (tracers), or 34 (UKCA).
-    # Tracer fluxes 3100 - 3129 are also treated as prognostic.
-    code_condition = section in [0, 33, 34] or 3100 <= field.lbuser4 <= 3129
-
-    return code_condition and is_instantaneous(field)
+    return field.lbuser4 in PROGNOSTIC_STASH_CODES
 
 
 def is_instantaneous(field):
@@ -282,7 +279,7 @@ def is_instantaneous(field):
 
 def update_tracer_count(fields_file):
     """
-    Update the count of prognostic variables in a file's fixed length header.
+    Update the count of instantaneous tracer variables in a file's fixed length header.
 
     Parameters
     ----------
@@ -294,8 +291,15 @@ def update_tracer_count(fields_file):
     None
     """
     previous_count = fields_file.integer_constants.num_passive_tracers
-    num_tracer_fields = sum([is_tracer(field) for field in fields_file.fields])
+    num_tracer_fields = sum([is_tracer(field)  and is_instantaneous(field) for field in fields_file.fields])
     # Divide by number of levels for the number of tracer variables
+    if num_tracer_fields % fields_file.integer_constants.num_tracer_levels !=0:
+        raise ValueError(
+            f"Number of tracer levels {fields_file.integer_constants.num_tracer_levels} "
+            f"does not divide number of tracer fields {num_tracer_fields}. Number of "
+            "tracer variables cannot be determined."
+        )
+
     updated_count = num_tracer_fields / fields_file.integer_constants.num_tracer_levels
 
     if updated_count != previous_count:
@@ -317,7 +321,8 @@ def is_tracer(field):
     bool
         whether a field is a tracer.
     """
-    return field.lbuser4 in TRACER_STASH_CODES and is_instantaneous(field)
+    return field.lbuser4 in TRACER_STASH_CODES
+    
 
 
 def main():
@@ -338,7 +343,7 @@ def main():
         filtered_file.validate = void_validation
 
     update_prognostic_count(filtered_file)
-    # update_tracer_count(fields_file)
+    update_tracer_count(filtered_file)
 
     filtered_file.to_file(output_filename)
 
