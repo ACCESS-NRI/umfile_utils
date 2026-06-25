@@ -294,7 +294,7 @@ def test_exclude_fields(create_mock_field):
 
 
 prognostic_codes = st.fixed_dictionaries(
-    {"lbuser4": st.integers(min_value=1, max_value=34999).filter(lambda n: n in PROGNOSTIC_STASH_CODES)}
+    {"lbuser4": st.integers(min_value=1, max_value=54999).filter(lambda n: n in PROGNOSTIC_STASH_CODES)}
 )
 non_prognostic_codes = st.fixed_dictionaries(
     {"lbuser4": st.integers(min_value=1, max_value=34999).filter(lambda n: n not in PROGNOSTIC_STASH_CODES)}

@@ -17,7 +17,7 @@ from itertools import chain
 
 # Prognostic variables have section 0, 33 (tracers), or 34 (UKCA).
 # Tracer flux variables 3100 - 3129 are also treated as prognostic.
-PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(3100,3129+1), range(33001,34999+1)))
+PROGNOSTIC_STASH_CODES = tuple(chain(range(1,999+1), range(3100,3129+1), range(33001,34999+1), range(54000,54999+1)))
 # Tracer variables have section 33
 TRACER_STASH_CODES = tuple(range(33000, 33999+1))
 
