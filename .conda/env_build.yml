@@ -1,7 +1,6 @@
 channels:
     - accessnri
     - conda-forge
-    - coecms
     - nodefaults
 
 dependencies:

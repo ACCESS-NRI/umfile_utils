@@ -72,7 +72,7 @@ jobs:
     
         - name: Build conda package
           shell: bash -el {0}
-          run: conda build . --no-anaconda-upload --output-folder=${{env.BUILD_FOLDER}} -c accessnri -c conda-forge -c coecms --package-format ${{vars.PACKAGE_FORMAT}}
+          run: conda build . --no-anaconda-upload --output-folder=${{env.BUILD_FOLDER}} -c accessnri -c conda-forge --package-format ${{vars.PACKAGE_FORMAT}}
     
         - name: Verify conda package
           shell: bash -el {0}

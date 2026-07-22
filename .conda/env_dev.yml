@@ -2,7 +2,6 @@ name: umfile-utils-dev
 channels:
   - accessnri
   - conda-forge
-  - coecms
   - nodefaults
 dependencies:
   - python >=3.10
