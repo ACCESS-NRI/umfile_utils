@@ -13,7 +13,6 @@ requires-python = ">=3.10"
 dependencies = [
     "mule",
     "numpy <2",
-    "versioneer",
     "xarray",
 ]
 
@@ -23,8 +22,8 @@ Repository = "https://github.com/ACCESS-NRI/umfile_utils"
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>64", 
-    "versioneer[toml]"
+    "setuptools>=80",
+    "setuptools-scm[simple]>=8",
 ]
 
 [project.scripts]
@@ -36,13 +35,9 @@ um_fields_subset = "umfile_utils.um_fields_subset:main"
 where = ["src"]
 namespaces = false
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "src/umfile_utils/_version.py"
-versionfile_build = "umfile_utils/_version.py"
-tag_prefix = ""
-parentdir_prefix = "umfile-utils-"
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
 
 [tool.pytest.ini_options]
 pythonpath = "src"

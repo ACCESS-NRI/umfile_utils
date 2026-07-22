@@ -7,4 +7,4 @@ dependencies:
     - anaconda-client
     - conda-build
     - conda-verify
-    - versioneer
+    - setuptools-scm >=8
