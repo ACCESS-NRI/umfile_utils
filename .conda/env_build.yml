@@ -1,3 +1,5 @@
+name: build-env
+
 channels:
     - accessnri
     - conda-forge
